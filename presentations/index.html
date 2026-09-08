@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Claude Code Course — Presentations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/course.css" />
+  <style>
+    .index-wrap { max-width: 920px; margin: 0 auto; padding: 72px 32px; }
+    .index-wrap h1 { margin-bottom: 8px; }
+    .deck-list { display: grid; gap: 14px; margin-top: 36px; }
+    .deck-list a {
+      display: block;
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px 22px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .deck-list a:hover { border-color: var(--copper); }
+    .deck-list strong { color: var(--copper); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .deck-list span { display: block; font-family: var(--display); font-size: 28px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="index-wrap">
+    <p class="kicker">Claude Code course</p>
+    <h1>Lecture decks</h1>
+    <p><strong>Language:</strong> English · <a href="uk/index.html">Українською</a></p>
+    <p class="lede muted">Open in a browser. Arrow keys or click to advance. Press <code>d</code> for a dark room. <code>Esc</code> for overview.</p>
+    <div class="deck-list">
+      <a href="lecture-01.html"><strong>Lecture 1</strong><span>LLMs, agents, capabilities</span></a>
+      <a href="lecture-02.html"><strong>Lecture 2</strong><span>Project memory and setup</span></a>
+      <a href="lecture-03.html"><strong>Lecture 3</strong><span>MCP, modes, commands</span></a>
+      <a href="lecture-04.html"><strong>Lecture 4</strong><span>Model context</span></a>
+      <a href="lecture-05.html"><strong>Lecture 5</strong><span>Spec-driven development</span></a>
+    </div>
+    <p class="hint">Student notes live in <code>lectures/</code> (Ukrainian: <code>lectures/uk/</code>). Cheatsheet: <code>resources/cheatsheet.md</code>.</p>
+  </div>
+</body>
+</html>

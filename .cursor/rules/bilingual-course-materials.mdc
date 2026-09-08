@@ -1,0 +1,45 @@
+---
+description: Keep lecture, presentation, and practice materials mirrored in English and Ukrainian
+globs: lectures/**/*.md, presentations/**/*.html, practice/**/*.md
+alwaysApply: true
+---
+
+# Bilingual course materials (EN + UK)
+
+Student-facing **lectures**, **presentations**, and **practice briefs** exist in English and Ukrainian. English is the source. Ukrainian is a full mirror, not a summary.
+
+## File layout
+
+| English | Ukrainian mirror |
+| --- | --- |
+| `lectures/01-foo.md` | `lectures/uk/01-foo.md` |
+| `presentations/lecture-01.html` | `presentations/uk/lecture-01.html` |
+| `practice/01-foo.md` | `practice/uk/01-foo.md` |
+| `lectures/README.md` | `lectures/uk/README.md` |
+| `practice/README.md` | `practice/uk/README.md` |
+| `presentations/index.html` | `presentations/uk/index.html` |
+
+Do **not** put Ukrainian copies of `practice/starter-campusdesk/` app code here. Only the lesson markdown.
+
+After the title, link the other language:
+
+```markdown
+**Language:** English · [Українською](uk/01-foo.md)
+**Мова:** українська · [English](../01-foo.md)
+```
+
+Ukrainian HTML decks use `lang="uk"` and `../shared/course.css` / `../shared/course.js`.
+
+## When you edit
+
+- Creating or changing an English lecture, deck, or practice brief **requires** the same change in the `uk/` mirror (structure, headings, examples, check questions).
+- Creating or changing a Ukrainian file **requires** updating English if the meaning changed.
+- Update both READMEs / presentation indexes when you add or rename a lesson.
+
+## What to translate vs keep
+
+Translate prose, headings, table cell explanations, slide copy, and student-facing prompt examples.
+
+**Do not translate:** file paths, shell/CLI, slash commands (`/context`, `/mcp`), code, JSON, product and API names (`Claude Code`, `CampusDesk`, `CLAUDE.md`, `MCP`, `pytest`, `ruff`, `Jira`, `SPEC-001`), mode names (`Plan`, `Accept edits`), or official English doc URLs.
+
+Keep the same heading hierarchy, callout pattern (“In one sentence” → “Одним реченням”), and teaching tone. Address students as **ви**.

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Лекція 4 — Контекст моделі</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Курс Claude Code</span><span>Лекція 4 · Контекст моделі</span></div>
+  <div class="overview"><h2>Огляд</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Лекція 4</p>
+      <h1>Контекст моделі і як ним керувати</h1>
+      <p class="lede">Чому агент розплився о 16:00 — і команди, що прибирають зі столу.</p>
+      <p class="hint">Конспект: lectures/uk/04-model-context.md · <a href="../lecture-04.html">English</a></p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Сьогодні</p>
+      <h2>Шість речей, з якими варто вийти</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>Вікно — це RAM для цієї розмови, не жорсткий диск для репозиторію.</strong>
+          Репозиторій лишається на диску. Claude може перечитати файл. Він не може магічно згадати абзац, який згорнули в підсумок — якщо цей абзац не живе у файлі.
+        </li>
+        <li>
+          <strong><code>/context</code> — як побачити діаграму — і ви вже заплатили до «привіт».</strong>
+          Memory files, описи skills і імена MCP оподатковують кожну сесію. <code>CLAUDE.md</code> на 400 рядків, який імпортує вікі, — ось чому люди кажуть, що Claude ігнорує правила. Правила там є. Вони поховані.
+        </li>
+        <li>
+          <strong>Вивід інструментів — тихий убивця.</strong>
+          П’ятнадцять рядків падіння pytest — золото. Дамп на 2 000 рядків — отрута. Повторне читання тих самих файлів і змішування побічних квестів у сесію фічі заштовхує специфікацію в туман.
+        </li>
+        <li>
+          <strong>Compaction автоматичне, з втратами і необхідне.</strong>
+          Суть лишається. Третій пункт приймання — може й ні. Стійкі правила живуть у файлах. Після compact знову <code>@</code> специфікацію, якщо завдання триває.
+        </li>
+        <li>
+          <strong>Чотири скидання, чотири роботи.</strong>
+          <code>/compact</code> для того самого завдання з товстим вікном. <code>/rewind</code>, коли підхід був хибний. <code>/clear</code>, коли наступне завдання не пов’язане. Нова сесія (або <code>-c</code>) для нового дня.
+        </li>
+        <li>
+          <strong>Помічайте хворе вікно, перш ніж псування коду стане очевидним.</strong>
+          Проігноровані пункти специфікації, вигадані helpers, новий стиль, цикл на тому самому логу. Потім протокол: чиста сесія на специфікацію, режим Plan, тихі тести, побічні квести деінде.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Обмеження</p>
+      <h2>Майже кожна добра практика — це практика контексту</h2>
+      <p>Модель у майже повному вікні — не інший продукт. Це той самий продукт із захаращеним столом. Вона випустить обмеження зі специфікації, «забуде» правило лінта або вигадає функцію, яку читала годину тому.</p>
+      <p>Ви навчитесь <strong>бачити</strong> вікно (<code>/context</code>), <strong>витрачати</strong> його навмисно, <strong>скидати</strong> його (<code>/compact</code>, <code>/clear</code>, <code>/rewind</code>) і <strong>ізолювати</strong> важкі читання (skills, субагенти, path-scoped rules).</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Визначення</p>
+      <h2>Робоча пам’ять цієї сесії</h2>
+      <p class="callout">Вікно контексту — це RAM для цієї розмови, а не жорсткий диск для репозиторію.</p>
+      <p>Це максимум токенізованого тексту, на який модель може звернути увагу в одному запиті: системний промпт, інструменти, memory files, ваші повідомлення, вміст файлів, вивід команд, результати MCP.</p>
+      <ul>
+        <li>Багато сесій: порядку <strong>200k</strong> токенів. Деякі моделі: до <strong>1M</strong>.</li>
+        <li>Мільйон — не нескінченність. Один товстий payload з Jira + двадцять читань + багатослівний pytest + імена MCP — і вікно на 200k уже в біді.</li>
+        <li>Якість часто падає <em>до</em> жорсткого ліміту. Увага до середини згасає. Compaction уже міг згорнути специфікацію в підсумок.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Нова сесія</p>
+      <h2>Порожня від чату, не порожня від налаштувань</h2>
+      <p>Ось чому існує Лекція 2. Постійні інструкції мають бути файлами, бо вчорашня розмова зникла, а сьогоднішні налаштування вже займають діаграму.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Зникло</h3>
+          <p>Учорашні жарти, файли, які вона прочитала, але ніколи не записала, стиль, який ви пояснили лише в чаті.</p>
+        </div>
+        <div class="card">
+          <h3>Усе ще тут</h3>
+          <p><code>CLAUDE.md</code>, автопам’ять, описи skills, імена MCP, системний промпт.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Діаграма /context</p>
+      <h2>Цифри в маркетингових слайдах — не ваша сесія</h2>
+      <p><code>/context</code> — так. Зробіть це рефлексом після будь-якого довгого дослідження. Кожна частка — те, що ви можете навмисно зменшити.</p>
+      <table>
+        <thead><tr><th>Частка</th><th>Приклади</th><th>Ви керуєте цим через</th></tr></thead>
+        <tbody>
+          <tr><td>Memory files</td><td><code>CLAUDE.md</code>, rules, автопам’ять</td><td>Тримайте коротко; path-scope rules</td></tr>
+          <tr><td>Описи skills</td><td>Завжди завантажені; тіла — коли використані</td><td>Менше, щільніші описи</td></tr>
+          <tr><td>MCP</td><td>Імена; схеми, коли використані</td><td>Менше серверів; не звалювати результати</td></tr>
+          <tr><td>Reads / bash</td><td>Тіла файлів, вивід pytest</td><td>Субагенти; <code>pytest -q</code>; не робити cat логів</td></tr>
+          <tr><td>Ваш текст</td><td>Промпти, оповідь Claude</td><td>Коротші промпти, менше «просто перевірити»</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Податок</p>
+      <h2>CLAUDE.md на 400 рядків оподатковує «перейменуйте цю змінну»</h2>
+      <p>Перш ніж ви друкуєте, ви вже витратили токени на пам’ять + описи. Імпортуйте три документи по 800 рядків — і кожне крихітне завдання платить енциклопедичний податок.</p>
+      <div class="diagram">
+        <div class="window" aria-label="Оподатковане вікно до того, як ви друкуєте">
+          <span class="sys">Система</span>
+          <span class="mem">Товстий CLAUDE.md</span>
+          <span class="files">@ вікі</span>
+          <span class="log">Імена MCP</span>
+          <span class="free">Ваше завдання</span>
+        </div>
+        <p class="legend">
+          <span><i style="background: var(--paper-2)"></i>Завжди</span>
+          <span><i style="background: var(--copper-soft)"></i>Постійна проза</span>
+          <span><i style="background: var(--teal-soft)"></i>Імпорти</span>
+          <span><i style="background: rgba(138, 59, 18, 0.16)"></i>Список інструментів</span>
+          <span><i style="background: var(--cream); border: 1px solid var(--line)"></i>Що лишилось на роботу</span>
+        </p>
+      </div>
+      <p class="diagram-caption">Ось чому люди часто кажуть, що Claude ігнорує правила. Правила там є. Вони поховані.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Швидкість заповнення</p>
+      <h2>Реалістична година в CampusDesk</h2>
+      <p>Жодне з цього окремо не є помилкою. Разом вони заштовхують специфікацію в туман.</p>
+      <ol>
+        <li>Прикріпити специфікацію (~3k токенів)</li>
+        <li>Прочитати models, store, main, tests</li>
+        <li>Багатослівний дамп <code>pytest -vv</code></li>
+        <li>Traceback, потім скріншот (зображення теж токени)</li>
+        <li>Перечитати <code>docs/product.md</code> «просто перевірити»</li>
+        <li>Стороннє питання про git у тій самій сесії — запущене з кореня курсу помилково</li>
+      </ol>
+      <p class="diagram-caption">Вивід інструментів — тихий убивця. Покладіть у <code>CLAUDE.md</code>: запускати <code>pytest -q</code>, якщо не дебажите один тест. Скажіть «у вас уже є <code>store.py</code>» замість дозволяти читати його знову.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Compaction</p>
+      <h2>Автоматичне, з втратами, необхідне</h2>
+      <p>Коли вікно наближається до ліміту, Claude Code просить модель підсумувати старішу розмову й продовжує з цим підсумком плюс свіжим робочим набором. Рятувальник. Також втрата даних.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Зазвичай повертається</h3>
+          <p>Системний промпт. Кореневий <code>CLAUDE.md</code> і rules без scope, повторне читання з диска. Файл плану. Автопам’ять. Можливо кілька нещодавніх файлів. Тіла skills, можливо, з лімітами — важливі рядки нагорі.</p>
+        </div>
+        <div class="card">
+          <h3>Часто зникає</h3>
+          <p>Третій пункт приймання. Ваш точний ранній промпт (можливо одне речення). Вивід hook годину тому. Файл, який вона прочитала один раз і ніколи не записала.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Стійкі правила живуть у файлах, а не в повідомленні 2. Якщо завдання триває, знову <code>@</code> специфікацію після compact.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Ручний compact</p>
+      <h2>Скажіть, що залишити</h2>
+      <p>Сфокусований compact кращий за автоматичний прохід, який вгадує, що важливо. Ви також можете змінити, <em>коли</em> спрацьовує autocompact, на версіях, які це підтримують.</p>
+      <pre><code>/compact зосередьтеся на SPEC-001
+         і тестах, що падають</code></pre>
+      <p class="diagram-caption"><code>/rewind</code> може підсумувати <em>частину</em> розмови, щоб хвіст лишився цілим.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Чотири скидання</p>
+      <h2>Різні роботи. Не міняйте їх місцями.</h2>
+      <p>Люди роблять <code>/clear</code> запізно (фіча вже забруднена побічним квестом) або <code>/compact</code>, коли мали б <code>/clear</code> (підсумок усе ще говорить про побічний квест).</p>
+      <table>
+        <thead><tr><th>Хід</th><th>Зберігає чат</th><th>Коли</th></tr></thead>
+        <tbody>
+          <tr><td><code>/compact</code></td><td>Підсумовано</td><td>Те саме завдання, товсте вікно</td></tr>
+          <tr><td><code>/rewind</code></td><td>Раніше + знімки файлів</td><td>Останній підхід був хибний</td></tr>
+          <tr><td><code>/clear</code></td><td>Ні</td><td>Наступне завдання не пов’язане</td></tr>
+          <tr><td>Нова сесія / <code>-c</code></td><td>Ні / повний старий чат</td><td>Новий день або продовжити після обіду</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Стрункість за задумом</p>
+      <h2>Лекція 2, побачена зі сторони токенів</h2>
+      <p>Типова сесія має бути достатньо дешевою, щоб «перейменуйте цю змінну» не платило за вікі.</p>
+      <ul>
+        <li><code>CLAUDE.md</code> менше ~200 рядків</li>
+        <li>Path-scoped rules замість одного гігантського завжди увімкненого файла</li>
+        <li>Skills для довгих плейбуків — опис зараз, тіло на вимогу</li>
+        <li>Згадувати шляхи до документів замість імпортувати енциклопедії</li>
+        <li>Відключати непотрібні MCP-сервери</li>
+        <li>Субагенти для широкого дослідження; батьківська сесія отримує підсумок</li>
+        <li><code>cd</code> у CampusDesk — не в корінь курсу</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Симптоми</p>
+      <h2>Помічайте хворе вікно, перш ніж PR стане неправильним</h2>
+      <div class="columns">
+        <div class="card">
+          <h3>Хворе вікно</h3>
+          <ul>
+            <li>Ігнорує пункт специфікації, з яким погодилось годину тому</li>
+            <li>Вигадує helper, який уже існує</li>
+            <li>Раптом використовує новий стиль</li>
+            <li>Крутиться на тому самому логу</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Ходи</h3>
+          <ul>
+            <li>Знову <code>@</code> специфікацію</li>
+            <li><code>/context</code> — що там насправді?</li>
+            <li>Compact зі фокусом або clear, якщо робота змінилась</li>
+            <li>Витягніть 20 рядків падіння; не робіть <code>cat</code> логу</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Протокол</p>
+      <h2>Для роботи над фічею</h2>
+      <p>Користуйтеся цим на специфікації та імплементації, що далі. Одна чиста сесія на специфікацію дешевша за одну героїчну сесію, яка ще й відповідає на питання про git.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1</span><h3>Чиста сесія</h3><p>Одна специфікація. Не вчорашній чат.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">2</span><h3>Plan · @ spec</h3><p>Прикріпіть файл один раз. Нічого з Out of scope.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3</span><h3>Тихі тести</h3><p><code>pytest -q</code>. Посередині <code>/context</code>.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">4</span><h3>Закрити</h3><p>Побічні квести деінде. <code>/clear</code> після merge.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Далі</p>
+      <h2>Лекція 5 — розробка за специфікацією</h2>
+      <p>Специфікація — контракт. Тести — доказ. Jira — черга. Агенти будують <em>якусь</em> цілісну систему; специфікація змушує їх будувати <em>ту</em> систему, яка вам потрібна.</p>
+      <p>Після цієї лекції ви напишете специфікацію, імплементуєте з неї і триматимете документацію чесною — усе це також практика контексту: прикріпіть специфікацію один раз, тримайте сесію чистою, не імпортуйте вікі.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Стрілки · Space · клік · Esc огляд · d темна тема</span><span data-counter></span></div>
+  <script src="../shared/course.js"></script>
+</body>
+</html>

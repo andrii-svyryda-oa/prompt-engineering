@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lecture 4 — Model context</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Claude Code course</span><span>Lecture 4 · Model context</span></div>
+  <div class="overview"><h2>Overview</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Lecture 4</p>
+      <h1>Model context, and how to manage it</h1>
+      <p class="lede">Why the agent got fuzzy at 4pm — and the commands that clean the desk.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Today</p>
+      <h2>Six things you should leave with</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>The window is RAM for this conversation, not a hard drive for the repo.</strong>
+          The repository stays on disk. Claude can re-read a file. It cannot magically remember a paragraph that was summarized away unless that paragraph lives in a file.
+        </li>
+        <li>
+          <strong><code>/context</code> is how you see the pie — and you already paid before “hi.”</strong>
+          Memory files, skill descriptions, and MCP names tax every session. A 400-line <code>CLAUDE.md</code> that imports the wiki is why people say Claude ignores rules. The rules are in there. They are buried.
+        </li>
+        <li>
+          <strong>Tool output is the silent killer.</strong>
+          Fifteen lines of a pytest failure is gold. A 2,000-line dump is poison. Re-reading the same files and mixing side quests into a feature session shoves the spec into the fog.
+        </li>
+        <li>
+          <strong>Compaction is automatic, lossy, and necessary.</strong>
+          The gist stays. The third acceptance bullet may not. Durable rules belong in files. After compact, <code>@</code> the spec again if the task continues.
+        </li>
+        <li>
+          <strong>Four resets, four jobs.</strong>
+          <code>/compact</code> for the same task with a fat window. <code>/rewind</code> when the approach was wrong. <code>/clear</code> when the next task is unrelated. A new session (or <code>-c</code>) for a new day.
+        </li>
+        <li>
+          <strong>Notice a sick window before the code rot is obvious.</strong>
+          Ignored spec bullets, reinvented helpers, a new style, looping on the same log. Then a protocol: clean session per spec, Plan mode, quiet tests, side quests elsewhere.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">The constraint</p>
+      <h2>Almost every best practice is a context practice</h2>
+      <p>The model in a nearly full window is not a different product. It is the same product with a messy desk. It will drop a constraint from the spec, “forget” the linter rule, or hallucinate a function it read an hour ago.</p>
+      <p>You will learn to <strong>see</strong> the window (<code>/context</code>), <strong>spend</strong> it on purpose, <strong>reset</strong> it (<code>/compact</code>, <code>/clear</code>, <code>/rewind</code>), and <strong>isolate</strong> heavy reads (skills, subagents, path-scoped rules).</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Definition</p>
+      <h2>Working memory of this session</h2>
+      <p class="callout">The context window is RAM for this conversation, not a hard drive for the repository.</p>
+      <p>It is the maximum tokenized text the model can attend to in one request: system prompt, tools, memory files, your messages, file contents, command output, MCP results.</p>
+      <ul>
+        <li>Many sessions: on the order of <strong>200k</strong> tokens. Some models: up to <strong>1M</strong>.</li>
+        <li>A million is not infinite. One fat Jira payload + twenty reads + verbose pytest + MCP names, and a 200k window is in trouble.</li>
+        <li>Quality often drops <em>before</em> the hard limit. Attention to the middle fades. Compaction may already have summarized away the spec.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">New session</p>
+      <h2>Empty of chat, not empty of setup</h2>
+      <p>That is why Lecture 2 exists. Standing instructions must be files, because yesterday’s conversation is gone and today’s setup is already occupying the pie.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Gone</h3>
+          <p>Yesterday’s jokes, the files it read but never wrote down, the style you explained only in chat.</p>
+        </div>
+        <div class="card">
+          <h3>Still there</h3>
+          <p><code>CLAUDE.md</code>, auto memory, skill descriptions, MCP names, the system prompt.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">/context pie</p>
+      <h2>Numbers in marketing slides are not your session</h2>
+      <p><code>/context</code> is. Make it a reflex after any long explore. Each slice is something you can shrink on purpose.</p>
+      <table>
+        <thead><tr><th>Slice</th><th>Examples</th><th>You control it by</th></tr></thead>
+        <tbody>
+          <tr><td>Memory files</td><td><code>CLAUDE.md</code>, rules, auto memory</td><td>Keep them short; path-scope rules</td></tr>
+          <tr><td>Skill descriptions</td><td>Always loaded; bodies when used</td><td>Fewer, tighter descriptions</td></tr>
+          <tr><td>MCP</td><td>Names; schemas when used</td><td>Fewer servers; don’t dump results</td></tr>
+          <tr><td>Reads / bash</td><td>File bodies, pytest output</td><td>Subagents; <code>pytest -q</code>; don’t cat logs</td></tr>
+          <tr><td>Your prose</td><td>Prompts, Claude’s narration</td><td>Shorter prompts, less “just checking”</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Tax</p>
+      <h2>A 400-line CLAUDE.md taxes “rename this variable”</h2>
+      <p>Before you type, you already spent tokens on memory + descriptions. Import three 800-line docs and every tiny task pays the encyclopedia tax.</p>
+      <div class="diagram">
+        <div class="window" aria-label="A taxed window before you type">
+          <span class="sys">System</span>
+          <span class="mem">Fat CLAUDE.md</span>
+          <span class="files">@ wiki</span>
+          <span class="log">MCP names</span>
+          <span class="free">Your task</span>
+        </div>
+        <p class="legend">
+          <span><i style="background: var(--paper-2)"></i>Always</span>
+          <span><i style="background: var(--copper-soft)"></i>Standing prose</span>
+          <span><i style="background: var(--teal-soft)"></i>Imports</span>
+          <span><i style="background: rgba(138, 59, 18, 0.16)"></i>Tool list</span>
+          <span><i style="background: var(--cream); border: 1px solid var(--line)"></i>What is left for the work</span>
+        </p>
+      </div>
+      <p class="diagram-caption">That is often why people say Claude ignores rules. The rules are in there. They are buried.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Fill rate</p>
+      <h2>A realistic CampusDesk hour</h2>
+      <p>None of these are mistakes individually. Together they shove the spec into the fog.</p>
+      <ol>
+        <li>Attach a spec (~3k tokens)</li>
+        <li>Read models, store, main, tests</li>
+        <li>Verbose <code>pytest -vv</code> dump</li>
+        <li>Traceback, then a screenshot (images are tokens too)</li>
+        <li>Re-read <code>docs/product.md</code> “just to check”</li>
+        <li>An unrelated git question in the same session — launched from the course root by mistake</li>
+      </ol>
+      <p class="diagram-caption">Tool output is the silent killer. Put in <code>CLAUDE.md</code>: run <code>pytest -q</code> unless debugging a single test. Say “you already have <code>store.py</code>” instead of letting it read it again.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Compaction</p>
+      <h2>Automatic, lossy, necessary</h2>
+      <p>When the window approaches its limit, Claude Code asks the model to summarize older conversation and continues with that summary plus a fresh working set. Lifesaver. Also data loss.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Usually comes back</h3>
+          <p>System prompt. Root <code>CLAUDE.md</code> and unscoped rules, re-read from disk. Plan file. Auto memory. Maybe a few recent files. Skill bodies, maybe, with caps — important lines at the top.</p>
+        </div>
+        <div class="card">
+          <h3>Often gone</h3>
+          <p>The third acceptance bullet. Your exact early prompt (maybe one sentence). Hook output from an hour ago. A file it read once and never wrote down.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Durable rules belong in files, not in message 2. If the task continues, <code>@</code> the spec again after compact.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Manual compact</p>
+      <h2>Tell it what to keep</h2>
+      <p>A focused compact is better than the automatic pass, which guesses what matters. You can also change <em>when</em> autocompact fires, on versions that support it.</p>
+      <pre><code>/compact focus on SPEC-001
+         and the failing tests</code></pre>
+      <p class="diagram-caption"><code>/rewind</code> can summarize <em>part</em> of the conversation so you keep the tail intact.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Four resets</p>
+      <h2>Different jobs. Do not swap them.</h2>
+      <p>People <code>/clear</code> too late (the feature is already polluted with a side quest) or <code>/compact</code> when they should <code>/clear</code> (the summary still talks about the side quest).</p>
+      <table>
+        <thead><tr><th>Move</th><th>Keeps chat</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>/compact</code></td><td>Summarized</td><td>Same task, fat window</td></tr>
+          <tr><td><code>/rewind</code></td><td>Earlier + file snapshots</td><td>Last approach was wrong</td></tr>
+          <tr><td><code>/clear</code></td><td>No</td><td>Next task is unrelated</td></tr>
+          <tr><td>New session / <code>-c</code></td><td>No / full old chat</td><td>New day, or continue after lunch</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Lean by design</p>
+      <h2>Lecture 2, seen from the token side</h2>
+      <p>The default session should be cheap enough that “rename this variable” is not paying for the wiki.</p>
+      <ul>
+        <li><code>CLAUDE.md</code> under ~200 lines</li>
+        <li>Path-scoped rules instead of one giant always-on file</li>
+        <li>Skills for long playbooks — description now, body on demand</li>
+        <li>Mention doc paths instead of importing encyclopedias</li>
+        <li>Disconnect unused MCP servers</li>
+        <li>Subagents for wide research; parent session gets the summary</li>
+        <li><code>cd</code> into CampusDesk — not the course root</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Symptoms</p>
+      <h2>Notice the sick window before the PR is wrong</h2>
+      <div class="columns">
+        <div class="card">
+          <h3>Sick window</h3>
+          <ul>
+            <li>Ignores a spec bullet it agreed to an hour ago</li>
+            <li>Reinvents a helper that already exists</li>
+            <li>Suddenly uses a new style</li>
+            <li>Loops on the same log</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Moves</h3>
+          <ul>
+            <li><code>@</code> the spec again</li>
+            <li><code>/context</code> — what is actually in there?</li>
+            <li>Compact with a focus, or clear if the job changed</li>
+            <li>Extract 20 lines of failure; do not <code>cat</code> the log</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Protocol</p>
+      <h2>For feature work</h2>
+      <p>Use this on the spec and implementation work that follows. One clean session per spec is cheaper than one heroic session that also answers git questions.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1</span><h3>Clean session</h3><p>One spec. Not yesterday’s chat.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">2</span><h3>Plan · @ spec</h3><p>Attach the file once. Nothing from Out of scope.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3</span><h3>Quiet tests</h3><p><code>pytest -q</code>. Midway <code>/context</code>.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">4</span><h3>Close</h3><p>Side quests elsewhere. <code>/clear</code> after merge.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Next</p>
+      <h2>Lecture 5 — spec-driven development</h2>
+      <p>The spec is the contract. Tests are the proof. Jira is the queue. Agents build <em>a</em> coherent system; a spec makes them build <em>the</em> system you needed.</p>
+      <p>After this lecture you will write a spec, implement from it, and keep the docs honest — all of that is also a context practice: attach the spec once, keep the session clean, do not import the wiki.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Arrow keys · Space · click · Esc overview · d dark</span><span data-counter></span></div>
+  <script src="shared/course.js"></script>
+</body>
+</html>

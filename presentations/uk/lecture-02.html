@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Лекція 2 — Пам’ять проєкту та налаштування</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Курс Claude Code</span><span>Лекція 2 · Пам’ять проєкту та налаштування</span></div>
+  <div class="overview"><h2>Огляд</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Лекція 2</p>
+      <h1>Як Claude читає проєкт</h1>
+      <p class="lede">CLAUDE.md, пов’язані документи, rules, skills, hooks — і порядок налаштування, який не топить модель.</p>
+      <p class="hint">Конспект: lectures/uk/02-project-memory-and-setup.md · <a href="../lecture-02.html">English</a></p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Сьогодні</p>
+      <h2>Шість речей, з якими варто вийти</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>Сесія не порожня, коли ви друкуєте «привіт».</strong>
+          Системний промпт, кореневий <code>CLAUDE.md</code>, rules без scope, <em>описи</em> skills і <em>імена</em> MCP уже у вікні. Читання, path-scoped rules, тіла skills і вивід hooks накопичуються пізніше.
+        </li>
+        <li>
+          <strong>Проза навчає. Settings налаштовують. Hooks примушують.</strong>
+          <code>CLAUDE.md</code> — порада в markdown, яку модель може ігнорувати. <code>settings.json</code> — механіка. Якщо вам потрібно «cannot <code>rm -rf</code>», це hook або deny — не курсив.
+        </li>
+        <li>
+          <strong>Напишіть короткий, перевірюваний CLAUDE.md і закомітьте його.</strong>
+          Кладіть факти, яких код не скаже: команди run/test/lint, менеджер пакетів, куди класти новий код, always/never, специфічні для проєкту. Ціль — менше ~200 рядків. Розмите «будьте охайними» сюди не належить.
+        </li>
+        <li>
+          <strong><code>@</code> у CLAUDE.md — податок на кожну сесію.</strong>
+          Імпорти розгортаються на старті. <code>@</code> в одному промпті сплачується один раз. Не імпортуйте вікі. Імпортуйте коротку архітектурну нотатку — або лише згадайте шлях.
+        </li>
+        <li>
+          <strong>Обирайте шар: завжди / іноді / обов’язково.</strong>
+          Завжди істинне й коротке → <code>CLAUDE.md</code>. Завжди істинне лише в <code>app/</code> → path-scoped rule. Багатокрокове й рідкісне → skill. Має статися, навіть якщо Claude забуде → hook.
+        </li>
+        <li>
+          <strong>Порядок setup, який зупиняється, коли наступний шар не має тригера.</strong>
+          Спочатку чесний README і тести. <code>/init</code>, потім обріжте. <code>/context</code>, щоб довести, що завантажилось. Allowlist для pytest і ruff. Додавайте rules, один skill, один hook лише коли є повторювана помилка, яку треба запобігти.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Тест для кожного рядка</p>
+      <h2>Чи призведе видалення цього до повторюваної помилки?</h2>
+      <p>Якщо ні — не додавайте. Пастка — збирати кожну фічу: файли пам’яті, rules, skills, hooks, plugins, субагенти, MCP. Вам не потрібні всі вони в перший день. Вам потрібен правильний <strong>шар</strong> для кожного виду знань.</p>
+      <p class="callout">Довгі інструкції не сильніші. Їх легше ігнорувати.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Мапа</p>
+      <h2>Як виглядає справжній репозиторій</h2>
+      <p>Claude Code дивиться на робочу директорію і вашу user-папку. Командні файли комітять. Ваш смак лишається в gitignore.</p>
+      <pre><code>CLAUDE.md                 # команда, комітити
+CLAUDE.local.md           # ви, gitignore
+.mcp.json                 # сервери, без секретів
+.claude/
+  settings.json           # permissions, hooks — комітити
+  settings.local.json     # ваші allowlists — gitignore
+  rules/*.md
+  skills/*/SKILL.md</code></pre>
+      <p class="diagram-caption">Файли на рівні користувача живуть у <code>~/.claude/</code>. Користуйтеся ними для свого смаку, не для архітектури команди.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Два файли, які плутають</p>
+      <h2>Порада проти механіки</h2>
+      <p>Якщо вам потрібно «Claude не може стерти диск», абзац цього не зробить.</p>
+      <table>
+        <thead><tr><th></th><th>CLAUDE.md</th><th>settings.json</th></tr></thead>
+        <tbody>
+          <tr><td>Мова</td><td>Markdown, порада</td><td>JSON, механіка</td></tr>
+          <tr><td>Приклади</td><td>«Запускайте pytest, перш ніж казати готово»</td><td>Allowlists дозволів, hooks, env</td></tr>
+          <tr><td>Примусово?</td><td>Ні. Модель може ігнорувати</td><td>Так, для ключів, які продукт примушує</td></tr>
+          <tr><td>Токени</td><td>Так — займає вікно</td><td>Здебільшого ні, крім виводу hooks</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Перш ніж друкувати</p>
+      <h2>Сесія не порожня</h2>
+      <p>Нова сесія — не порожня модель плюс ваше перше речення. Налаштування вже у вікні. Далі робота накладається зверху.</p>
+      <div class="diagram layer-stack" aria-label="Що вантажиться до того, як ви друкуєте, і що потім накопичується">
+        <div class="layer">
+          <span class="layer-label">Уже всередині</span>
+          <div>
+            <h3>Сплачено до «привіт»</h3>
+            <p>Системний промпт · кореневий <code>CLAUDE.md</code> і rules без scope · автопам’ять (з лімітом) · <strong>описи</strong> skills, не тіла · <strong>імена</strong> MCP (схеми часто пізніше).</p>
+          </div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">Потім росте</span>
+          <div>
+            <h3>Сплачено, поки працює</h3>
+            <p>Кожне Read · path-scoped rules і вкладені <code>CLAUDE.md</code>, коли відкривають відповідні файли · тіла skills на <code>/</code> або збіг · вивід hooks після правок.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Звичка</p>
+      <h2><code>/context</code> — як перевірити, що завантажилось</h2>
+      <p>Він показує діаграму того, що насправді зайняло вікно — не те, що ви сподівались завантажити. Запускайте після <code>/init</code> і щоразу, коли агент починає ігнорувати правило, яке ви точно написали.</p>
+      <ul>
+        <li>Якщо <code>CLAUDE.md</code> немає серед Memory files, ви в неправильній директорії або файл названо неправильно.</li>
+        <li>Якщо Memory files — 800 рядків, ви імпортували забагато. Обріжте або перенесіть розділи в path-scoped rules.</li>
+        <li>Запускайте всередині папки проєкту, не в корені курсу.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">CLAUDE.md</p>
+      <h2>Постійні інструкції, кожна сесія</h2>
+      <p>Ви його пишете. Це заміна повторювати себе. Файли <strong>конкатенуються</strong> — вони не перевизначають одне одного як CSS. Суперечності змушують Claude обирати навмання.</p>
+      <table>
+        <thead><tr><th>Scope</th><th>Де</th><th>Хто</th></tr></thead>
+        <tbody>
+          <tr><td>User</td><td><code>~/.claude/CLAUDE.md</code></td><td>Ви, усі проєкти</td></tr>
+          <tr><td>Project</td><td><code>./CLAUDE.md</code></td><td>Команда — комітьте</td></tr>
+          <tr><td>Local</td><td><code>./CLAUDE.local.md</code></td><td>Ви, цей репозиторій — gitignore</td></tr>
+          <tr><td>Nested</td><td><code>package/CLAUDE.md</code></td><td>Завантажується, коли працюєте в цьому піддереві</td></tr>
+        </tbody>
+      </table>
+      <p class="diagram-caption">Claude також піднімається вгору по дереву. Запуск у <code>apps/api/</code> може завантажити три файли. У монорепозиторії це потужно і шумно.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Пишіть це</p>
+      <h2>Факти, яких код чітко не скаже</h2>
+      <p>Кладіть те, що Claude не може надійно вивести. Залишайте за бортом туторіали, каталоги всіх endpoints і «будьте професійними».</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Кладіть</h3>
+          <ul>
+            <li>Як запускати, тестувати, лінтити, перевіряти типи</li>
+            <li>Менеджер пакетів (<code>pnpm</code> vs <code>npm</code>)</li>
+            <li>Always / never, специфічні для проєкту</li>
+            <li>Куди класти новий код (routes vs store)</li>
+            <li>Підводні камені: in-memory store, спільний стан тестів</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Залишайте за бортом</h3>
+          <ul>
+            <li>Переказ README</li>
+            <li>Усю архітектурну вікі</li>
+            <li>«Пишіть чистий код»</li>
+            <li>Усе, чим має володіти path-scoped rule або skill</li>
+          </ul>
+        </div>
+      </div>
+      <p class="diagram-caption">Ціль — <strong>менше ~200 рядків</strong>. Якщо видалення рядка не спричинить помилку — видаліть його.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Конкретність</p>
+      <h2>Перевірюване перемагає ввічливе</h2>
+      <p>Модель добре вміє звучати так, ніби послухалась. Дайте їй команду, яку можна запустити, і вивід, який треба показати.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Розмито</h3>
+          <p>«Протестуйте зміни.» «Форматуйте правильно.» «Нічого не зламайте.» Claude напише впевнений абзац і зупиниться.</p>
+        </div>
+        <div class="card">
+          <h3>Перевірюване</h3>
+          <p>«Перед «готово»: <code>pytest</code> і <code>ruff check .</code>. Покажіть останні рядки виводу. Не кажіть готово без них.»</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">/init</p>
+      <h2>Згенеруйте, потім обріжте</h2>
+      <p><code>/init</code> чернетить <code>CLAUDE.md</code> з репозиторію. Корисно як перший прохід. Часто задовгий — каталогізує файли замість назвати кілька фактів, що запобігають помилкам.</p>
+      <ul>
+        <li>Залиште команди, розкладку, підводні камені.</li>
+        <li>Решту видаліть. Потім запустіть <code>/context</code> і <code>/doctor</code>.</li>
+        <li><code>/doctor</code> позначить очевидне: відсутні файли, погані назви, секрети не там.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Пов’язані документи</p>
+      <h2><code>@path</code> у CLAUDE.md сплачується кожну сесію</h2>
+      <p>Імпорти розгортаються на старті. Вкладені стрибки обмежені. Зворотні лапки залишають <code>@README</code> літеральним текстом замість імпорту.</p>
+      <pre><code>See @README.md for how to run.
+Architecture: @docs/architecture.md</code></pre>
+      <div class="compare">
+        <div class="card">
+          <h3>Кожну сесію</h3>
+          <p><code>@</code> всередині <code>CLAUDE.md</code> — файл у вікні навіть для «перейменуйте цю змінну».</p>
+        </div>
+        <div class="card">
+          <h3>Цього разу</h3>
+          <p><code>@docs/specs/SPEC-001.md</code> у промпті — податок на це завдання, потім може піти.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Не імпортуйте вікі. Імпортуйте коротку архітектурну нотатку — або лише згадайте шлях, щоб Claude міг відкрити його, коли завдання цього потребує.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Rules</p>
+      <h2><code>.claude/rules/</code> розділяє теми</h2>
+      <p>Rules без scope завантажуються на старті — той самий податок, що й <code>CLAUDE.md</code>. Path-scoped rules завантажуються, коли читають відповідні файли; так ви тримаєте стиль Python поза сесією лише з markdown.</p>
+      <pre><code>---
+paths:
+  - "app/**/*.py"
+  - "tests/**/*.py"
+---
+# Keep handlers thin. Tests ship with endpoints.</code></pre>
+      <p class="diagram-caption">Одна тема на файл. Якщо два rules суперечать, Claude обирає навмання — як і зі складеними файлами <code>CLAUDE.md</code>.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Skills</p>
+      <h2>Процедури, що чекають, доки знадобляться</h2>
+      <p>Папка плюс <code>SKILL.md</code> стає <code>/folder-name</code>. Claude бачить <strong>опис</strong> одразу (дешево). <strong>Тіло</strong> завантажується на <code>/</code> або коли завдання збігається (сплачено тоді).</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Добрий skill</h3>
+          <p>«Завершити зміну»: запустити pytest і ruff, показати вивід, оновити статус специфікації, не вигадувати скоуп.</p>
+        </div>
+        <div class="card">
+          <h3>Поганий skill</h3>
+          <p>Плейбук на 2 000 рядків, що переказує вікі. Кладіть важливі рядки <strong>нагорі</strong> — compaction може залишити лише початок.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Старі <code>.claude/commands/*.md</code> ще працюють. Нова робота — через skills.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Оберіть шар</p>
+      <h2>Чотири домівки для знань</h2>
+      <p>Якщо покладете багатокроковий ритуал у <code>CLAUDE.md</code>, ви платите за нього на кожному перейменуванні. Якщо тверде правило безпеки лише в прозі — його проігнорують у зайнятий день.</p>
+      <table>
+        <thead><tr><th>Потреба</th><th>Куди класти</th><th>Чому</th></tr></thead>
+        <tbody>
+          <tr><td>Завжди істинне, коротке</td><td><code>CLAUDE.md</code></td><td>Кожна сесія, дешево якщо маленьке</td></tr>
+          <tr><td>Завжди істинне, лише в <code>app/</code></td><td>Path-scoped rule</td><td>Завантажується, коли читають ці файли</td></tr>
+          <tr><td>Багатокрокове, іноді</td><td>Skill</td><td>Опис зараз, тіло на вимогу</td></tr>
+          <tr><td>Має статися, навіть якщо Claude забуде</td><td>Hook або deny</td><td>Продукт це примушує</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Hooks</p>
+      <h2>Поради необов’язкові. Hooks — ні.</h2>
+      <p>Hook — це команда, яку продукт запускає на події. Вивід може потрапити в розмову — тримайте його коротким. Лог на 5 000 рядків після кожної правки — так ви отруюєте вікно.</p>
+      <table>
+        <thead><tr><th>Подія</th><th>Типове застосування</th></tr></thead>
+        <tbody>
+          <tr><td>PreToolUse</td><td>Блокувати <code>rm -rf</code>, блокувати запис у <code>.env</code></td></tr>
+          <tr><td>PostToolUse</td><td>Запустити ruff після Edit/Write — короткий підсумок, не весь файл</td></tr>
+          <tr><td>Stop</td><td>Відмовити в «готово», якщо pytest червоний</td></tr>
+        </tbody>
+      </table>
+      <p class="diagram-caption"><code>/hooks</code> — що насправді зареєстровано. JSON на диску — намір. Якщо вони розходяться, довіряйте живій панелі.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Gitignore</p>
+      <h2>Пам’ять команди комітять. Секрети — ні.</h2>
+      <pre><code>CLAUDE.local.md
+.claude/settings.local.json</code></pre>
+      <ul>
+        <li>Ніколи не комітьте токени, API-ключі чи <code>.mcp.json</code>, у який вшиті секрети.</li>
+        <li>Командні <code>CLAUDE.md</code>, <code>.claude/settings.json</code>, rules і skills <em>варто</em> комітити, щоб наступний інженер отримав той самий цикл.</li>
+        <li>Ваш allowlist для <code>pytest</code> може лишатися локальним, якщо команда ще не домовилась.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Порядок налаштування</p>
+      <h2>Зупиніться, коли наступний шар не має тригера</h2>
+      <p>Не встановлюйте кожну фічу, бо слайд її перелічив. Кожен крок має запобігати помилці, яку ви вже бачили, або яку цей репозиторій точно спричинить.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1–2</span><h3>Основи</h3><p>Чесний README, test, lint. <code>/init</code>, потім обріжте <code>CLAUDE.md</code>.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3–4</span><h3>Доведіть</h3><p><code>/context</code> і <code>/doctor</code>. Allowlist для pytest і ruff.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">5–6</span><h3>Розділіть</h3><p>Path-scoped rules, коли з’являються розділи. Один командний skill «завершити зміну».</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">7–8</span><h3>Примус</h3><p>Один hook на те, що люди забувають. MCP, коли починається копіпаст.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Форма CampusDesk</p>
+      <h2>CLAUDE.md, який варто комітити</h2>
+      <p>Такий короткий файл запобігає повторюваним помилкам, не оподатковуючи кожне перейменування.</p>
+      <pre><code>## Commands
+pytest
+ruff check .
+
+## Architecture
+routes: app/main.py
+rules: app/store.py
+
+## Done means
+pytest and ruff are green.
+Show the output.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Діагностика</p>
+      <h2>Коли «воно не дотримується правил»</h2>
+      <p>Зазвичай файл не завантажено, він похований, або правило було лише порадою. Перевірте живий продукт, перш ніж переписувати абзац.</p>
+      <ul>
+        <li><code>/context</code> — завантажилось? 800 рядків Memory files?</li>
+        <li><code>/skills</code> — неправильна назва папки, тож <code>/</code> не збігається?</li>
+        <li><code>/hooks</code> — JSON на диску, але нічого не зареєстровано?</li>
+        <li>Небезпечна дія все одно відбувається → hook або deny, не ще одне речення курсивом</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Далі</p>
+      <h2>Лекція 3 — MCP, режими, команди</h2>
+      <p>Додаткові руки для Jira. Режими дозволів. Slash-команди, які ви справді натискатимете. Питайте живий продукт — <code>/mcp</code>, <code>/context</code>, <code>/permissions</code> — а не блог минулого тижня.</p>
+      <p>Після цієї лекції розкладіть тематичні настанови в rules і skill, потім додайте hook перевірки, щоб «готово» не було лише абзацом.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Стрілки · Space · клік · Esc огляд · d темна тема</span><span data-counter></span></div>
+  <script src="../shared/course.js"></script>
+</body>
+</html>

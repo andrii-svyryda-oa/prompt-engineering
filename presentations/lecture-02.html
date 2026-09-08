@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lecture 2 — Project memory and setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Claude Code course</span><span>Lecture 2 · Project memory and setup</span></div>
+  <div class="overview"><h2>Overview</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Lecture 2</p>
+      <h1>How Claude reads a project</h1>
+      <p class="lede">CLAUDE.md, linked docs, rules, skills, hooks — and a setup order that does not drown the model.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Today</p>
+      <h2>Six things you should leave with</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>A session is not empty when you type “hi.”</strong>
+          System prompt, root <code>CLAUDE.md</code>, unscoped rules, skill <em>descriptions</em>, and MCP <em>names</em> are already in the window. Reads, path-scoped rules, skill bodies, and hook output accumulate later.
+        </li>
+        <li>
+          <strong>Prose teaches. Settings configure. Hooks enforce.</strong>
+          <code>CLAUDE.md</code> is markdown advice the model may ignore. <code>settings.json</code> is machinery. If you need “cannot <code>rm -rf</code>,” that is a hook or a deny — not italics.
+        </li>
+        <li>
+          <strong>Write a short, checkable CLAUDE.md and commit it.</strong>
+          Put facts the code will not say: run/test/lint commands, package manager, where new code goes, project-specific always/never. Target under ~200 lines. Vague “be clean” does not belong.
+        </li>
+        <li>
+          <strong><code>@</code> in CLAUDE.md is a tax every session.</strong>
+          Imports expand at launch. <code>@</code> in one prompt is paid once. Do not import the wiki. Import a short architecture note — or only mention the path.
+        </li>
+        <li>
+          <strong>Choose a layer: always / sometimes / must.</strong>
+          Always true and short → <code>CLAUDE.md</code>. Always true only in <code>app/</code> → path-scoped rule. Multi-step and occasional → skill. Must happen even if Claude forgets → hook.
+        </li>
+        <li>
+          <strong>A setup order that stops when the next layer has no trigger.</strong>
+          Honest README and tests first. <code>/init</code> then cut. <code>/context</code> to prove it loaded. Allowlist pytest and ruff. Add rules, one skill, one hook only when you have a repeatable mistake to prevent.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Test for every line</p>
+      <h2>Would deleting this cause a repeatable mistake?</h2>
+      <p>If no, do not add it. The trap is collecting every feature: memory files, rules, skills, hooks, plugins, subagents, MCP. You do not need all of them on day one. You need the right <strong>layer</strong> for each kind of knowledge.</p>
+      <p class="callout">Long instructions are not stronger. They are easier to ignore.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Map</p>
+      <h2>What a real repo looks like</h2>
+      <p>Claude Code looks at the working directory and your user folder. Team files are committed. Your taste stays gitignored.</p>
+      <pre><code>CLAUDE.md                 # team, commit
+CLAUDE.local.md           # you, gitignore
+.mcp.json                 # servers, no secrets
+.claude/
+  settings.json           # permissions, hooks — commit
+  settings.local.json     # your allowlists — gitignore
+  rules/*.md
+  skills/*/SKILL.md</code></pre>
+      <p class="diagram-caption">User-wide files live under <code>~/.claude/</code>. Use those for your taste, not for the team’s architecture.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Two files people mix up</p>
+      <h2>Advice versus machinery</h2>
+      <p>If you need “Claude cannot delete the disk,” a paragraph will not do it.</p>
+      <table>
+        <thead><tr><th></th><th>CLAUDE.md</th><th>settings.json</th></tr></thead>
+        <tbody>
+          <tr><td>Language</td><td>Markdown, advice</td><td>JSON, machinery</td></tr>
+          <tr><td>Examples</td><td>“Run pytest before you claim done”</td><td>Permission allowlists, hooks, env</td></tr>
+          <tr><td>Enforced?</td><td>No. The model may ignore it</td><td>Yes, for the keys the product enforces</td></tr>
+          <tr><td>Tokens</td><td>Yes — it occupies the window</td><td>Mostly no, except hook output</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Before you type</p>
+      <h2>The session is not empty</h2>
+      <p>A new session is not a blank model plus your first sentence. Setup is already in the window. Work then piles on.</p>
+      <div class="diagram layer-stack" aria-label="What loads before you type, then what accumulates">
+        <div class="layer">
+          <span class="layer-label">Already in</span>
+          <div>
+            <h3>Paid before “hi”</h3>
+            <p>System prompt · root <code>CLAUDE.md</code> and unscoped rules · auto memory (capped) · skill <strong>descriptions</strong>, not bodies · MCP <strong>names</strong> (schemas often later).</p>
+          </div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">Then grows</span>
+          <div>
+            <h3>Paid as it works</h3>
+            <p>Each Read · path-scoped rules and nested <code>CLAUDE.md</code> when matching files are opened · skill bodies on <code>/</code> or a match · hook output after edits.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Habit</p>
+      <h2><code>/context</code> is how you know it loaded</h2>
+      <p>It shows the pie of what actually occupied the window — not what you hoped was loaded. Run it after <code>/init</code> and whenever the agent starts ignoring a rule you are sure you wrote.</p>
+      <ul>
+        <li>If <code>CLAUDE.md</code> is missing from Memory files, you are in the wrong directory or the file is named wrong.</li>
+        <li>If Memory files is 800 lines, you imported too much. Cut, or move chapters into path-scoped rules.</li>
+        <li>Launch inside the project folder, not the course root.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">CLAUDE.md</p>
+      <h2>Standing instructions, every session</h2>
+      <p>You write it. It is the replacement for repeating yourself. Files <strong>concatenate</strong> — they do not override like CSS. Contradictions make Claude pick at random.</p>
+      <table>
+        <thead><tr><th>Scope</th><th>Where</th><th>Who</th></tr></thead>
+        <tbody>
+          <tr><td>User</td><td><code>~/.claude/CLAUDE.md</code></td><td>You, all projects</td></tr>
+          <tr><td>Project</td><td><code>./CLAUDE.md</code></td><td>The team — commit it</td></tr>
+          <tr><td>Local</td><td><code>./CLAUDE.local.md</code></td><td>You, this repo — gitignore</td></tr>
+          <tr><td>Nested</td><td><code>package/CLAUDE.md</code></td><td>Loads when working in that subtree</td></tr>
+        </tbody>
+      </table>
+      <p class="diagram-caption">Claude also walks up the tree. Launching in <code>apps/api/</code> can load three files. In a monorepo that is powerful and noisy.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Write this</p>
+      <h2>Facts the code will not say clearly</h2>
+      <p>Put what Claude cannot infer reliably. Leave out tutorials, catalogs of every endpoint, and “be professional.”</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Put in</h3>
+          <ul>
+            <li>How to run, test, lint, typecheck</li>
+            <li>Package manager (<code>pnpm</code> vs <code>npm</code>)</li>
+            <li>Always / never that is project-specific</li>
+            <li>Where new code goes (routes vs store)</li>
+            <li>Gotchas: in-memory store, shared test state</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Leave out</h3>
+          <ul>
+            <li>A restatement of the README</li>
+            <li>The whole architecture wiki</li>
+            <li>“Write clean code”</li>
+            <li>Anything a path-scoped rule or skill should own</li>
+          </ul>
+        </div>
+      </div>
+      <p class="diagram-caption">Target <strong>under ~200 lines</strong>. If removing a line would not cause a mistake, remove it.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Specificity</p>
+      <h2>Checkable beats polite</h2>
+      <p>The model is good at sounding like it followed you. Give it a command it can run and output it must show.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Vague</h3>
+          <p>“Test your changes.” “Format properly.” “Don’t break anything.” Claude will write a confident paragraph and stop.</p>
+        </div>
+        <div class="card">
+          <h3>Checkable</h3>
+          <p>“Before done: <code>pytest</code> and <code>ruff check .</code>. Show the last lines of output. Do not say done without them.”</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">/init</p>
+      <h2>Generate, then cut</h2>
+      <p><code>/init</code> drafts a <code>CLAUDE.md</code> from the repo. Useful as a first pass. Often too long — it catalogs files instead of stating the few facts that prevent mistakes.</p>
+      <ul>
+        <li>Keep the commands, the layout, the gotchas.</li>
+        <li>Delete the rest. Then run <code>/context</code> and <code>/doctor</code>.</li>
+        <li><code>/doctor</code> flags the obvious: missing files, bad names, secrets in the wrong place.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Linked docs</p>
+      <h2><code>@path</code> in CLAUDE.md is paid every session</h2>
+      <p>Imports expand at launch. Nested hops are limited. Backticks keep <code>@README</code> as literal text instead of an import.</p>
+      <pre><code>See @README.md for how to run.
+Architecture: @docs/architecture.md</code></pre>
+      <div class="compare">
+        <div class="card">
+          <h3>Every session</h3>
+          <p><code>@</code> inside <code>CLAUDE.md</code> — the file is in the window even for “rename this variable.”</p>
+        </div>
+        <div class="card">
+          <h3>This once</h3>
+          <p><code>@docs/specs/SPEC-001.md</code> in a prompt — tax this task, then it can leave.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Do not import the wiki. Import a short architecture note — or only mention the path so Claude can open it when the task needs it.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Rules</p>
+      <h2><code>.claude/rules/</code> splits topics</h2>
+      <p>Unscoped rules load at start — same tax as <code>CLAUDE.md</code>. Path-scoped rules load when matching files are read, which is how you keep Python style out of a markdown-only session.</p>
+      <pre><code>---
+paths:
+  - "app/**/*.py"
+  - "tests/**/*.py"
+---
+# Keep handlers thin. Tests ship with endpoints.</code></pre>
+      <p class="diagram-caption">One topic per file. If two rules contradict, Claude picks at random — same as stacked <code>CLAUDE.md</code> files.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Skills</p>
+      <h2>Procedures that wait until needed</h2>
+      <p>A folder plus <code>SKILL.md</code> becomes <code>/folder-name</code>. Claude sees the <strong>description</strong> up front (cheap). The <strong>body</strong> loads on <code>/</code> or when the task matches (paid then).</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Good skill</h3>
+          <p>“Finish a change”: run pytest and ruff, show output, update the spec status, do not invent scope.</p>
+        </div>
+        <div class="card">
+          <h3>Bad skill</h3>
+          <p>A 2,000-line playbook that restates the wiki. Put important lines at the <strong>top</strong> — compaction may keep only the head.</p>
+        </div>
+      </div>
+      <p class="diagram-caption">Older <code>.claude/commands/*.md</code> still works. New work uses skills.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Choose a layer</p>
+      <h2>Four homes for knowledge</h2>
+      <p>If you put a multi-step ritual in <code>CLAUDE.md</code>, you pay for it on every rename. If you put a hard safety rule only in prose, it will be ignored on a busy day.</p>
+      <table>
+        <thead><tr><th>Need</th><th>Put it in</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Always true, short</td><td><code>CLAUDE.md</code></td><td>Every session, cheap if small</td></tr>
+          <tr><td>Always true, only in <code>app/</code></td><td>Path-scoped rule</td><td>Loads when those files are read</td></tr>
+          <tr><td>Multi-step, sometimes</td><td>Skill</td><td>Description now, body on demand</td></tr>
+          <tr><td>Must happen even if Claude forgets</td><td>Hook or deny</td><td>The product enforces it</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Hooks</p>
+      <h2>Advice is optional. Hooks are not.</h2>
+      <p>A hook is a command the product runs at an event. Output can enter the conversation — keep it short. A 5,000-line log on every edit is how you poison the window.</p>
+      <table>
+        <thead><tr><th>Event</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td>PreToolUse</td><td>Block <code>rm -rf</code>, block writes to <code>.env</code></td></tr>
+          <tr><td>PostToolUse</td><td>Run ruff after Edit/Write — a short summary, not the full file</td></tr>
+          <tr><td>Stop</td><td>Refuse “done” if pytest is red</td></tr>
+        </tbody>
+      </table>
+      <p class="diagram-caption"><code>/hooks</code> is what is actually registered. The JSON on disk is intent. If they disagree, trust the live panel.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Gitignore</p>
+      <h2>Team memory is committed. Secrets are not.</h2>
+      <pre><code>CLAUDE.local.md
+.claude/settings.local.json</code></pre>
+      <ul>
+        <li>Never commit tokens, API keys, or <code>.mcp.json</code> that embeds secrets.</li>
+        <li>Team <code>CLAUDE.md</code>, <code>.claude/settings.json</code>, rules, and skills <em>should</em> be committed so the next engineer gets the same loop.</li>
+        <li>Your allowlist for <code>pytest</code> can stay local if the team has not agreed yet.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Setup order</p>
+      <h2>Stop when the next layer has no trigger</h2>
+      <p>Do not install every feature because a slide listed it. Each step should prevent a mistake you have already seen, or that you know this repo will cause.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1–2</span><h3>Basics</h3><p>Honest README, test, lint. <code>/init</code>, then cut <code>CLAUDE.md</code>.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3–4</span><h3>Prove it</h3><p><code>/context</code> and <code>/doctor</code>. Allowlist pytest and ruff.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">5–6</span><h3>Split</h3><p>Path-scoped rules when chapters appear. One team skill for “finish a change.”</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">7–8</span><h3>Enforce</h3><p>One hook for the thing people forget. MCP when copy-paste starts.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">CampusDesk shape</p>
+      <h2>A CLAUDE.md worth committing</h2>
+      <p>This is the kind of short file that prevents repeatable mistakes without taxing every rename.</p>
+      <pre><code>## Commands
+pytest
+ruff check .
+
+## Architecture
+routes: app/main.py
+rules: app/store.py
+
+## Done means
+pytest and ruff are green.
+Show the output.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Debug</p>
+      <h2>When “it doesn’t follow the rules”</h2>
+      <p>Usually the file is not loaded, it is buried, or the rule was only advice. Check the live product before rewriting the paragraph.</p>
+      <ul>
+        <li><code>/context</code> — loaded? 800 lines of Memory files?</li>
+        <li><code>/skills</code> — wrong folder name, so <code>/</code> does not match?</li>
+        <li><code>/hooks</code> — JSON on disk but nothing registered?</li>
+        <li>Dangerous action still happens → hook or deny, not another sentence in italics</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Next</p>
+      <h2>Lecture 3 — MCP, modes, commands</h2>
+      <p>Extra hands for Jira. Permission modes. The slash commands you will actually press. Ask the live product — <code>/mcp</code>, <code>/context</code>, <code>/permissions</code> — not last week’s blog.</p>
+      <p>After this lecture, split topic guidance into rules and a skill, then add a verification hook so “done” is not just a paragraph.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Arrow keys · Space · click · Esc overview · d dark</span><span data-counter></span></div>
+  <script src="shared/course.js"></script>
+</body>
+</html>

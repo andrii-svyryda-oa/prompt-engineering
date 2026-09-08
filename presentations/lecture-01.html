@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lecture 1 — LLMs, agents, capabilities</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar">
+    <span class="brand">Claude Code course</span>
+    <span>Lecture 1 · LLMs, agents, capabilities</span>
+  </div>
+  <div class="overview"><h2>Overview</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Lecture 1</p>
+      <h1>From language models to coding agents</h1>
+      <p class="lede">What an LLM is, what an agent is, and what Claude Code can actually do in a repository.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Today</p>
+      <h2>Six things you should leave with</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>An honest model of an LLM — no mysticism.</strong>
+          It predicts the next token from the text already in its window. Fluency is a side effect of predicting text well, not a hidden “understanding module.” It is not a database of your company and not a source of truth.
+        </li>
+        <li>
+          <strong>Why a chatbot is not an agent.</strong>
+          A chatbot only returns text; you copy it, run tests, and paste errors. An agent is the same model with tools: it can read files, run commands, see the results, and continue without you as the hands.
+        </li>
+        <li>
+          <strong>The loop that finishes work: gather → act → verify → repeat.</strong>
+          Agents stop when the work <em>looks</em> done. Design the job so a check (pytest, ruff, a build, a screenshot) can return pass or fail without you watching every line.
+        </li>
+        <li>
+          <strong>A concrete menu of what Claude Code can do in a repo.</strong>
+          Explore without editing, implement from a spec, fix a bug from a symptom, refactor to an existing pattern, run the test/lint loop, and later touch git and Jira through tools — a menu, not a promise.
+        </li>
+        <li>
+          <strong>What still belongs to you, specifically.</strong>
+          Architecture tradeoffs, user harm, secrets, production writes, merge to main, and whether the spec was right. “Never delete the database” in English is a request; a hook or a missing tool is enforcement.
+        </li>
+        <li>
+          <strong>How to talk to it on day one so the loop can close.</strong>
+          Name the file and the HTTP contract. Point with <code>@path</code>. Define done as tests + linters. Separate explore from edit. Ask for command output. Interrupt and redirect instead of restarting.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Definition</p>
+      <h2>An LLM predicts the next token</h2>
+      <p>A large language model turns the text it has already seen into the next piece of text — a <strong>token</strong> — then the next, then the next. A token is one unit: sometimes a word, sometimes part of a word, sometimes <code>def</code> or <code>=&gt;</code>. Usefulness is a side effect of predicting text well, including a lot of source code.</p>
+      <div class="diagram">
+        <pre class="token-source"><code>def add(a, b):
+    return a + b</code></pre>
+        <div class="chips" aria-label="Approximate tokens for the snippet">
+          <span class="chip">def</span>
+          <span class="chip"> add</span>
+          <span class="chip">(</span>
+          <span class="chip">a</span>
+          <span class="chip">,</span>
+          <span class="chip"> b</span>
+          <span class="chip">):</span>
+          <span class="chip">return</span>
+          <span class="chip"> a</span>
+          <span class="chip"> +</span>
+          <span class="chip"> b</span>
+        </div>
+        <p class="diagram-caption">Approximate split, for teaching — not a tokenizer dump. One short function is already a dozen tokens. A 400-line file or a long pytest traceback is thousands.</p>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">What that implies</p>
+      <h2>A generator — not a source of truth</h2>
+      <p>Keep this list. You will need it when a demo looks magical.</p>
+      <table>
+        <thead><tr><th>It is</th><th>It is not</th><th>So do not expect</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>A generator trained on a lot of text and code</td>
+            <td>A database of your company</td>
+            <td>It to “already know” your services, ticket IDs, or last week’s decision</td>
+          </tr>
+          <tr>
+            <td>Limited by a token window</td>
+            <td>A compiler or test runner</td>
+            <td>Text that looks like a command to be the same as a command that ran</td>
+          </tr>
+          <tr>
+            <td>Often fluent and often useful</td>
+            <td>Deterministic</td>
+            <td>The same prompt to produce the same answer twice</td>
+          </tr>
+          <tr>
+            <td>Allowed to use only the tools the harness offers</td>
+            <td>Your access-control system</td>
+            <td>Prose like “never delete prod” to block a tool that is still available</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="diagram-caption">People call this <strong>hallucination</strong>. Here it means fluent tokens where a fact or a check should be — invented APIs, invented ticket IDs, or “the tests passed.” An agent can write that invention into the repo. Tools reduce some of it (it can grep); they do not remove it.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Tokens</p>
+      <h2>The window is big — and shared</h2>
+      <p>Limits and cost are a <strong>count of tokens</strong>, not a count of files. Modern models have big windows: many Claude Code sessions are on the order of <strong>200k tokens</strong>; some models go to <strong>1M</strong>. That budget is what <em>one model call</em> can see: your prompt so far, files it read, tool output, and the reply it is writing — they share the count.</p>
+      <table>
+        <thead><tr><th>Kind</th><th>~200k tokens can hold</th><th>~1M tokens can hold</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>English prose</td>
+            <td>~150,000 words — a short book</td>
+            <td>~750,000 words</td>
+          </tr>
+          <tr>
+            <td>Source code</td>
+            <td>on the order of 10,000+ lines, or tens of typical files</td>
+            <td>a mid-size repo in one gulp</td>
+          </tr>
+          <tr>
+            <td>Test traces / logs</td>
+            <td>a few verbose pytest dumps can take a large slice</td>
+            <td>still easy to fill with noise</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>You do not need to count them. Big is not infinite: it only sees what still fits in this call.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Pricing</p>
+      <h2>You pay for tokens, not files</h2>
+      <p>API pricing is <strong>token count × a rate</strong>, published per million tokens. Two meters on every model call: <strong>input</strong> (what this call sends to the model) and <strong>output</strong> (what the model writes back). Output is typically about <strong>five times</strong> the input rate. Bigger, stronger models cost more per token. Exact dollars change; this shape does not.</p>
+      <table>
+        <thead><tr><th>Meter</th><th>What it counts</th><th>How cost moves</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Input</td>
+            <td>Prompt so far, files it read, tool results, prior turns</td>
+            <td>Linear in how full the window is <em>this call</em></td>
+          </tr>
+          <tr>
+            <td>Output</td>
+            <td>The reply — including the text of tool calls</td>
+            <td>Linear in how long it talks; the expensive meter</td>
+          </tr>
+          <tr>
+            <td>Cached input</td>
+            <td>A repeated prefix (system prompt, tools)</td>
+            <td>A fraction of fresh input, if that prefix did not change</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Each agent step is a <em>new</em> model call. A verbose pytest dump is not a one-off: it is input now, and again on the next turn, until it falls out of the window. That is why noisy logs are expensive even when the window is big.</p>
+      <p>Claude Code in class is usually a <strong>subscription</strong>, not a raw API key. The same meters still run underneath. Hitting a usage cap is hitting this budget.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">“Knowing”</p>
+      <h2>Training vs this session — do not mix them</h2>
+      <p>People say “Claude knows X” for two jobs that look the same in chat. A session is one conversation with its own window. Persistent knowledge has to live in files.</p>
+      <div class="two-line">
+        <div class="columns">
+          <div class="card">
+            <span class="tag">Training</span>
+            <h3>“Knows Python”</h3>
+            <p>Given Python-looking text, it continues with more Python that often compiles. That knowledge is in the weights. It survives every new session.</p>
+          </div>
+          <div class="card">
+            <span class="tag teal">This session</span>
+            <h3>“Knows our repo”</h3>
+            <p>Only after it has read files, tickets, errors, and <code>CLAUDE.md</code>. There is no permanent copy of your repo inside the model. Next session starts empty of that chat.</p>
+          </div>
+        </div>
+        <div class="columns">
+          <div class="card">
+            <h3>Dies with the session</h3>
+            <ul>
+              <li>The back-and-forth you just had</li>
+              <li>Files it read but never wrote down</li>
+              <li>Style you explained only in chat</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Survives a new session</h3>
+            <ul>
+              <li><code>CLAUDE.md</code>, rules, skills, docs</li>
+              <li>Tickets and MCP results you fetch again</li>
+              <li>Git history, tests, the repo itself</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p class="diagram-caption">“Claude forgot our coding style” usually means “new session, nothing was written down.” Lecture 2 is how you reload the useful parts on purpose.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">The trap</p>
+      <h2>A chatbot puts you in the middle</h2>
+      <p>A chatbot can help you write a function. It falls apart when the job is “make this repository correct.” An <strong>agent</strong> is the same model with tools: it calls them, reads the results, and continues until the task is done — or you stop it.</p>
+      <div class="compare">
+        <div class="card">
+          <h3>Chatbot — you are the hands</h3>
+          <div class="mini-flow">
+            <span class="you">You type → it replies with text</span>
+            <span class="you">You copy, run tests, paste the error</span>
+            <span class="you">Repeat until you are tired</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Agent — tools are the hands</h3>
+          <div class="mini-flow">
+            <span class="you">You assign a task and a check</span>
+            <span class="tool">It reads, edits, runs pytest…</span>
+            <span class="you">You review evidence, not every keystroke</span>
+          </div>
+        </div>
+      </div>
+      <p>That loop is <strong>gather → act → verify</strong>. Design the job so it can close without you. If there is no check, you are the check.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node">
+            <span class="flow-num">1</span>
+            <h3>Gather</h3>
+            <p>Read files, search, open the spec, run tests once to see the error.</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node">
+            <span class="flow-num">2</span>
+            <h3>Act</h3>
+            <p>Edit code, write a test, call a tool, run a command.</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node">
+            <span class="flow-num">3</span>
+            <h3>Verify</h3>
+            <p>pytest, ruff, a build, a screenshot — pass or fail. Failed? Loop. Passed? Show the output. Stuck? Ask you.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Product</p>
+      <h2>Claude Code = model + tools + harness</h2>
+      <p>Without tools it can only talk. With tools, text becomes requests the app executes — and only tools the harness offered. The harness is why two people with the same model get different results. Class default: the <strong>terminal CLI</strong> in the project folder.</p>
+      <div class="diagram layer-stack" aria-label="Claude Code as three layers">
+        <div class="layer">
+          <span class="layer-label">Harness</span>
+          <div>
+            <h3>The product around them</h3>
+            <p>Permissions, <code>CLAUDE.md</code>, skills, hooks, compaction, checkpoints, the UI. You configure this in Lecture 2.</p>
+          </div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">Tools</span>
+          <div>
+            <h3>The hands</h3>
+            <p>Files, search, shell (tests, git, linters), web, subagents, later MCP (Jira). Claude sees a name, a description, and a schema — not a magical understanding of Jira.</p>
+          </div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">Model</span>
+          <div>
+            <h3>The predictor</h3>
+            <p>Reasons, writes, chooses which tool to call next. Still just predicting tokens, now conditioned on tool results.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Day one</p>
+      <h2>Explore first, then define done</h2>
+      <p>A menu, not a promise: explore, implement from a spec, fix a bug, refactor to a pattern, run tests — later git and MCP. Weak prompts (“fix tickets”) invent a plausible nicer. Strong ones name the file, the contract, <code>pytest</code> + <code>ruff</code>, and the output.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Explore — no edits</h3>
+          <pre><code>You are in CampusDesk. Do not change any files.
+1. What does this app do?
+2. How do I run it and test it?
+3. Where would I add a new field on a ticket?</code></pre>
+        </div>
+        <div class="card">
+          <h3>Then a check</h3>
+          <pre><code>Add PATCH from @docs/specs/SPEC-001.md.
+Write tests from the acceptance criteria.
+Run pytest and ruff. Fix until green.
+Show the command output.</code></pre>
+        </div>
+      </div>
+      <p class="diagram-caption">If it starts rewriting the README, stop it. Put “no edits” in the prompt. Habit: read first, change second, measure always.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Limits</p>
+      <h2>It will still fail at these — and you will still try</h2>
+      <p>Honesty saves hours. The agent accelerates the middle. The ends stay human.</p>
+      <ul>
+        <li><strong>Vague taste</strong> — “make the API nicer” produces a random nicer. Write the nicer down.</li>
+        <li><strong>Secrets and production</strong> — no production credentials in chat; no unsupervised writes to production Jira.</li>
+        <li><strong>Private facts</strong> — if it is not in the repo, the ticket, MCP, or the web, it will fill the gap with a plausible sentence.</li>
+        <li><strong>Huge messy sessions</strong> — after enough files and stack traces, quality drops. That is context, not laziness.</li>
+        <li><strong>Policy written only in English</strong> — “Never edit <code>.env</code>” in <code>CLAUDE.md</code> is a request. A hook that blocks the edit is enforcement.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Safety</p>
+      <h2>Permissions — cycle with Shift+Tab</h2>
+      <p>Claude Code asks before many actions, depending on <strong>permission mode</strong>. On some Windows terminals the shortcut is <code>Alt+M</code>. Start with Manual or Accept edits. Use Plan when the task is a whole feature. Do not start with Bypass because a slide looked cool.</p>
+      <table>
+        <thead><tr><th>Mode</th><th>Feel</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td>Manual</td><td>Asks before edits and shell</td><td>First sessions, unfamiliar repos</td></tr>
+          <tr><td>Accept edits</td><td>Edits freely, still asks for risky shell</td><td>Once you trust the task and the folder</td></tr>
+          <tr><td>Plan</td><td>Reads and proposes, no source edits</td><td>Anything that will become a PR</td></tr>
+          <tr><td>Auto</td><td>A classifier allows most, blocks scary</td><td>Later, when you know the allowlist</td></tr>
+          <tr><td>Bypass</td><td>Almost no prompts</td><td>Isolated environments only</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Safety</p>
+      <h2>Checkpoints are not git — interrupt, don’t restart</h2>
+      <p>Before file edits, Claude Code snapshots the files. Double <code>Esc</code> can rewind conversation and files. Remote side effects do not rewind. When it goes the wrong way, say what was wrong; restart when the job changed or the context is junk.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Checkpoints can undo</h3>
+          <p>Local file edits in this session. Useful when the approach is wrong and you want the files back.</p>
+        </div>
+        <div class="card">
+          <h3>Checkpoints cannot undo</h3>
+          <p>Jira transitions, <code>git push</code>, dropped tables, anything that left the laptop. Git is the real undo for commits. Permissions and hooks are the real undo for tools that leave the machine.</p>
+        </div>
+      </div>
+      <ul>
+        <li><code>Esc</code> — stop this turn. Type a correction while it works.</li>
+        <li>Reject a tool call if the command should not run.</li>
+        <li>Plan mode when the task is a PR-sized change.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Next</p>
+      <h2>Lecture 2 — how Claude reads a project</h2>
+      <p>Standing instructions live in files: <code>CLAUDE.md</code>, linked docs, rules, skills, and hooks. You will learn a setup order that does not dump the whole wiki into every session.</p>
+      <p>After this lecture, explore CampusDesk without editing, then do a first project setup so the next session starts with memory on disk — not in yesterday’s chat.</p>
+    </section>
+
+  </div>
+  <div class="footer">
+    <span>Arrow keys · Space · click · Esc overview · d dark</span>
+    <span data-counter></span>
+  </div>
+  <script src="shared/course.js"></script>
+</body>
+</html>

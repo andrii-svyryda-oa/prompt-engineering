@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Лекція 5 — Розробка за специфікацією</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Курс Claude Code</span><span>Лекція 5 · Розробка за специфікацією</span></div>
+  <div class="overview"><h2>Огляд</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Лекція 5</p>
+      <h1>Розробка за специфікацією</h1>
+      <p class="lede">Агенти будують <em>якусь</em> цілісну систему. Специфікація змушує їх будувати <em>ту</em> систему, яка вам потрібна.</p>
+      <p class="hint">Конспект: lectures/uk/05-spec-driven-development.md · <a href="../lecture-05.html">English</a></p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Сьогодні</p>
+      <h2>Шість речей, з якими варто вийти</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>Специфікація — контракт. Код — реалізація.</strong>
+          Якщо цього немає в специфікації, Claude не повинен цього будувати. Якщо це є в специфікації, тести мають це довести. Це протилежність vibe coding, де промпт випаровується, коли сесія закінчується.
+        </li>
+        <li>
+          <strong>Напишіть специфікацію, яку агент може імплементувати без здогадок.</strong>
+          Нумеровані вимоги, чесний Out of scope, критерії приймання, що стають тестами, перевірки (<code>pytest</code>, <code>ruff</code>) і відкриті питання, які означають <strong>стоп</strong> — не вигадувати.
+        </li>
+        <li>
+          <strong>Цикл: дослідити → специфікація → план → реалізувати → перевірити → документація → тікет.</strong>
+          Режим Plan, доки специфікацію не підписано. Потім реалізуйте лише ту специфікацію. Прив’яжіть кожен рядок приймання до тесту. Оновіть архітектуру в тій самій зміні.
+        </li>
+        <li>
+          <strong>Тримайте смуги: git тримає контракт, Jira тримає чергу.</strong>
+          Дві копії роз’їдуться. Тікет має вказувати на <code>docs/specs/SPEC-xxx.md</code>. MCP відкриває файл; він не імпровізує з одного рядка.
+        </li>
+        <li>
+          <strong>Відмовляйте в розширенні обсягу, доки спочатку не зміниться специфікація.</strong>
+          «Додайте assignee» притягує таблицю користувачів, email і адмін-UI, бо такі токени часто йдуть далі. Out of scope — найважливіший розділ для агентів.
+        </li>
+        <li>
+          <strong>MCP — транспорт, а не друга специфікація.</strong>
+          Прочитайте issue, напишіть або прив’яжіть файл у git, реалізуйте з файла, прокоментуйте підсумок. Переходи статусу лишаються за вами — корисні агенти люблять натискати Done.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Нудна помилка</p>
+      <h2>Вправні додатки, про які ніхто не просив</h2>
+      <p>Агентів навчено завершувати патерни. Тікет «додайте assignee» притягне повну таблицю користувачів, email-сповіщення і адмін-UI, бо такі токени часто йдуть за «assignee» в інтернеті.</p>
+      <p>Людського стажера, який перебудував, можна окинути поглядом. Агент перебудовує <strong>вправно</strong> і <strong>швидко</strong>, потім пише документацію, яка виправдовує зайву роботу. Без специфікації рев’ю — це ви сперечаєтесь із дуже швидким джуном.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Визначення</p>
+      <h2>Приколіть патерн до документа, який ви контролюєте</h2>
+      <p class="callout">Якщо цього немає в специфікації, Claude не повинен цього будувати. Якщо це є в специфікації, тести мають це довести.</p>
+      <p>Ця лекція — не корпоративний театр. Це найменший набір документів і звичок, який дає агенту цикл, що <strong>закривається проти письмового контракту</strong>. У вас уже є механіка: цикл (L1), пам’ять проєкту (L2), режими й MCP (L3), контекст (L4). SDD — це як навести цю механіку на <strong>одне</strong> джерело істини.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Контракт</p>
+      <h2>П’ять правил, не церемонія</h2>
+      <ol>
+        <li>Робота починається з <strong>письмової специфікації</strong> — markdown у репозиторії або story в Jira, яка <em>є</em> специфікацією.</li>
+        <li>Специфікація перелічує <strong>поведінку</strong>, <strong>приймання</strong>, <strong>поза скоупом</strong> і <strong>перевірки</strong>.</li>
+        <li>Імплементація не може додавати продуктову поведінку, якої немає в специфікації.</li>
+        <li>Тести простежуються до критеріїв приймання.</li>
+        <li>Якщо реальність не збігається, ви <strong>спочатку змінюєте специфікацію</strong> (або явно відмовляєтесь), потім код.</li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Смуги</p>
+      <h2>У кожного документа одне завдання</h2>
+      <p>Якщо все живе в Jira, версії зникають у скріншоти. Якщо все живе в <code>CLAUDE.md</code>, кожне перейменування платить за фічу.</p>
+      <table>
+        <thead><tr><th>Документ</th><th>Завдання</th><th>Коли завантажується</th></tr></thead>
+        <tbody>
+          <tr><td><code>product.md</code></td><td>Навіщо він існує</td><td>Рідко — тримайте коротко або лише шлях</td></tr>
+          <tr><td><code>architecture.md</code></td><td>Як ми будуємо</td><td>Короткий імпорт або коли змінюється структура</td></tr>
+          <tr><td><code>docs/specs/SPEC-xxx.md</code></td><td>Контракт цієї фічі</td><td><strong>Лише це завдання</strong> — <code>@</code> у промпті</td></tr>
+          <tr><td>Jira</td><td>Черга, статус, посилання на файл</td><td>MCP, коли налаштовано</td></tr>
+          <tr><td><code>CLAUDE.md</code></td><td>Дотримуватись специфікацій; запускати тести</td><td>Кожна сесія</td></tr>
+          <tr><td>Skill</td><td>Чекліст SDD</td><td>На вимогу</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Канонічне джерело</p>
+      <h2>Git тримає контракт. Jira тримає тікет.</h2>
+      <p>Jira чудова як черга: пріоритети, assignees, статус. Jira — поганий єдиний дім для специфікації на 3 сторінки. Дві копії роз’їдуться.</p>
+      <pre><code>Canonical spec: docs/specs/SPEC-001-ticket-assignee.md</code></pre>
+      <p class="diagram-caption">MCP має відкрити файл, а не імпровізувати з одного рядка в описі. Якщо тікет — заглушка, спочатку напишіть SPEC у git, потім прокоментуйте шлях.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Анатомія специфікації</p>
+      <h2>Стабільні заголовки, які може заповнити skill</h2>
+      <p>Специфікація — не роман. Користуйтеся тими самими розділами щоразу, щоб <code>/implement-spec</code> міг сказати «заповніть це».</p>
+      <table>
+        <thead><tr><th>Розділ</th><th>Що сюди належить</th></tr></thead>
+        <tbody>
+          <tr><td>Header</td><td>ID, заголовок, status, за бажанням ключ Jira</td></tr>
+          <tr><td>Problem</td><td>Біль користувача — не рішення</td></tr>
+          <tr><td>Scope / <strong>Out of scope</strong></td><td>Що зміниться, і привабливі додатки, від яких відмовляєтесь</td></tr>
+          <tr><td>Requirements (R1…)</td><td>Нумеровані, перевірювані. Не «ми маємо підтримувати ownership».</td></tr>
+          <tr><td>API / UX контракт</td><td>Форми, статус-коди, тіла помилок</td></tr>
+          <tr><td>Acceptance → тести</td><td>Given / When / Then або таблиця</td></tr>
+          <tr><td>Checks</td><td><code>pytest</code>, <code>ruff check .</code></td></tr>
+          <tr><td>Open questions</td><td>Якщо не порожньо, агент має <strong>зупинитись</strong></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Out of scope</p>
+      <h2>Найважливіший розділ для агентів</h2>
+      <p>Перелічіть додатки, які зазвичай ідуть за патерном в інтернеті. Якщо ви їх не запишете, модель вважатиме їх натяком.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>Для «додайте assignee»</h3>
+          <p>Без каталогу користувачів. Без перевірки, що людина існує. Без email. Без UI. Без моделі дозволів.</p>
+        </div>
+        <div class="card">
+          <h3>Чому це працює</h3>
+          <p>Рев’ю стає механічним: кожен зайвий endpoint — промах специфікації, не суперечка про смак. Агенту можна сказати «нічого з Out of scope» і мати файл, якому коритись.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Добре проти погано</p>
+      <h2>Імплементовне проти «як в інших інструментах»</h2>
+      <div class="columns">
+        <div class="card">
+          <h3>Погано</h3>
+          <p>«Додайте assignees, як в інших інструментах.» Модель вигадає User, зовнішній ключ і сповіщення.</p>
+        </div>
+        <div class="card">
+          <h3>Добре</h3>
+          <p>R1 optional <code>string | null</code>. R4 omit на PATCH залишає значення без змін. Очищення через <code>null</code>. Без каталогу користувачів.</p>
+        </div>
+      </div>
+      <pre><code>## Acceptance
+- Given a new ticket without assignee, GET shows null.
+- PATCH {"assignee":"it-oncall"} then GET shows that value.
+- PATCH {"assignee":null} then GET shows null.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Цикл</p>
+      <h2>Дослідити → специфікація → план → реалізувати → перевірити → документація → тікет</h2>
+      <p>Пропустіть план — отримаєте несподівані файли. Пропустіть документацію — наступний агент обиратиме навмання між кодом і вчорашньою архітектурною нотаткою.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1</span><h3>Дослідити</h3><p>Режим Plan. Прочитати product, architecture, поточні поля. Без коду.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">2</span><h3>Специфікація</h3><p>Написати або затягнути <code>SPEC-xxx.md</code>. Порожні відкриті питання, або стоп.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3</span><h3>План</h3><p>Файли й тести, прив’язані до приймання. Нічого з Out of scope.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">4</span><h3>Збудувати</h3><p>Реалізувати, тихі перевірки, оновити документацію, прокоментувати тікет. Done — за вами.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Режим Plan, доки не підписано</p>
+      <h2>Не реалізуйте чернетку</h2>
+      <p>Прикріпіть специфікацію один раз. Попросіть план, який можна відхилити. Дешевше, ніж відкочувати дерево зайвих моделей.</p>
+      <pre><code>@docs/specs/SPEC-001-ticket-assignee.md
+Напишіть план: файли, тести, прив’язані до
+критеріїв приймання. Нічого з Out of scope.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Потім реалізуйте</p>
+      <h2>Лише та специфікація. Доказ, не «готово».</h2>
+      <pre><code>Реалізуйте лише SPEC-001.
+Прив’яжіть кожен рядок приймання до pytest.
+pytest -q і ruff, доки не стане зеленим.
+Якщо неоднозначно — зупиніться. Не вгадуйте.</code></pre>
+      <p class="diagram-caption">Якщо реальність не збігається зі специфікацією, спочатку змініть специфікацію. Не «виправляйте» документ мовчки під випадковий код.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Тести</p>
+      <h2>Специфікація у виконуваній формі</h2>
+      <p>Зі специфікацією рев’ю механічне: кожен критерій має тест або причину, чому він ручний; жодних зайвих endpoints; документація збігається зі специфікацією, не з блогом агента.</p>
+      <ul>
+        <li>Називайте тести за id специфікації (<code>test_spec001_assignee_defaults_null</code>).</li>
+        <li>Не переписуйте тести під випадкову поведінку.</li>
+        <li>Необов’язковий TDD: спочатку тести, що падають, потім код, доки не стане зеленим. Агенти в цьому добрі, коли ви забороняєте зайві fixtures.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Skill</p>
+      <h2>/implement-spec</h2>
+      <p><code>CLAUDE.md</code> потрібно лише близько десяти рядків політики: дотримуватись специфікацій, запускати тести, не вигадувати скоуп. Ритуал живе в skill, щоб ви не платили за нього на кожному перейменуванні.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><h3>Переказати</h3><p>Скоуп і поза скоупом словами агента.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>Стоп</h3><p>Якщо відкриті питання не порожні.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>План · збудувати</h3><p>Лише в скоупі. Тихі перевірки.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>Звітувати</h3><p>Документацію оновлено. Від чого відмовились.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">MCP</p>
+      <h2>Транспорт, а не друга специфікація</h2>
+      <ol>
+        <li>Прочитайте issue. Якщо це заглушка, напишіть SPEC у git і прокоментуйте шлях.</li>
+        <li>Реалізуйте з <strong>файла</strong>, не з однорядкового підсумку, який вигадала модель.</li>
+        <li>Прокоментуйте короткий підсумок того, що відвантажили і від чого відмовились.</li>
+        <li>Статус лишається за вами. Не дозволяйте «корисності» перевести тікет у Done.</li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Документація</p>
+      <h2>Оновлюйте архітектуру в тій самій зміні</h2>
+      <p>Коли документація і код розходяться, наступний агент обиратиме навмання. Тримайте документацію короткою, щоб її можна було знайти, не з’їдаючи вікно.</p>
+      <ul>
+        <li>Нове поле на Ticket → один абзац у <code>architecture.md</code>, не новий розділ.</li>
+        <li>Не вставляйте всю специфікацію в <code>CLAUDE.md</code>.</li>
+        <li>Продуктовий текст, який не змінився, не потребує переписування «для повноти».</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Помилки, які ви побачите</p>
+      <h2>Назвіть їх, щоб ловити</h2>
+      <table>
+        <thead><tr><th>Що відбувається</th><th>Що ви робите</th></tr></thead>
+        <tbody>
+          <tr><td>Розмита специфікація → вигадана модель User</td><td>Затягніть Out of scope; відкотіть додатки</td></tr>
+          <tr><td>Величезна специфікація → забуті середні критерії</td><td>Менший SPEC або знову <code>@</code> після compact</td></tr>
+          <tr><td>Jira каже X, файл каже Y</td><td>Перемагає git; виправте посилання в тікеті</td></tr>
+          <tr><td>Зелені тести, невиконана специфікація</td><td>Тести переписали під код — відхиліть</td></tr>
+          <tr><td>Пропущений Plan → несподівані файли</td><td>Режим Plan, доки не підписано</td></tr>
+          <tr><td>Тікет переведено в Done через «корисність»</td><td>Переходи статусу за вами; скажіть це в промпті</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Стек</p>
+      <h2>SDD використовує весь курс</h2>
+      <div class="diagram layer-stack">
+        <div class="layer">
+          <span class="layer-label">L1</span>
+          <div><h3>Перевірка — це розділ Checks</h3><p>pytest і ruff — як цикл закривається. «Готово» без виводу — не готово.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L2</span>
+          <div><h3>Ритуал skill, hooks примушують</h3><p><code>/implement-spec</code> чекає, доки знадобиться. Stop hook може відмовити червоному набору.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L3</span>
+          <div><h3>Режим Plan; MCP — черга</h3><p>Без правок коду, доки план не збігається зі специфікацією. Jira — транспорт.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L4</span>
+          <div><h3>Чиста сесія, @ специфікацію один раз</h3><p>Не імпортуйте вікі. Побічні квести отримують інше вікно.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Завершення</p>
+      <h2>Одна історія від початку до кінця — потім необов’язкові додатки</h2>
+      <p>Далі ви прочитаєте і створите story в Jira через MCP, потім проведете одну історію від специфікації до зелених тестів і чесної документації.</p>
+      <p>Після курсу, за бажанням: специфікуйте чатбот у застосунку і агента в застосунку <em>перш ніж</em> їх будувати. Те саме правило: якщо цього немає в специфікації, не відвантажуйте.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Стрілки · Space · клік · Esc огляд · d темна тема</span><span data-counter></span></div>
+  <script src="../shared/course.js"></script>
+</body>
+</html>

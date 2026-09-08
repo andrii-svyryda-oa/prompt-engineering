@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lecture 5 — Spec-driven development</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared/course.css" />
+</head>
+<body>
+  <div class="progress"></div>
+  <div class="topbar"><span class="brand">Claude Code course</span><span>Lecture 5 · Spec-driven development</span></div>
+  <div class="overview"><h2>Overview</h2><div class="overview-grid"></div></div>
+  <div id="deck">
+
+    <section class="slide title-slide">
+      <p class="kicker">Lecture 5</p>
+      <h1>Spec-driven development</h1>
+      <p class="lede">Agents build <em>a</em> coherent system. A spec makes them build <em>the</em> system you needed.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Today</p>
+      <h2>Six things you should leave with</h2>
+      <ol class="takeaways">
+        <li>
+          <strong>The spec is the contract. Code is the implementation.</strong>
+          If it is not in the spec, Claude must not build it. If it is in the spec, tests must prove it. This is the opposite of vibe coding, where the prompt evaporates when the session ends.
+        </li>
+        <li>
+          <strong>Write a spec an agent can implement without guessing.</strong>
+          Numbered requirements, an honest Out of scope, acceptance criteria that become tests, checks (<code>pytest</code>, <code>ruff</code>), and open questions that mean <strong>stop</strong> — not invent.
+        </li>
+        <li>
+          <strong>The loop: explore → spec → plan → implement → verify → docs → ticket.</strong>
+          Plan mode until the spec is signed. Then implement only that spec. Map each acceptance line to a test. Update architecture in the same change.
+        </li>
+        <li>
+          <strong>Keep the lanes: git holds the contract, Jira holds the queue.</strong>
+          Two copies will drift. The ticket should point at <code>docs/specs/SPEC-xxx.md</code>. MCP opens the file; it does not improvise from a one-liner.
+        </li>
+        <li>
+          <strong>Refuse scope expansion unless the spec changes first.</strong>
+          “Add assignee” attracts a user table, email, and an admin UI because those tokens often follow. Out of scope is the most important section for agents.
+        </li>
+        <li>
+          <strong>MCP is transport, not a second spec.</strong>
+          Read the issue, write or link the file in git, implement from the file, comment a summary. You own status transitions — helpful agents love clicking Done.
+        </li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">The boring failure</p>
+      <h2>Fluent extras nobody asked for</h2>
+      <p>Agents are trained to complete patterns. A ticket that says “add assignee” will attract a full user table, email notifications, and an admin UI, because those tokens often follow “assignee” on the internet.</p>
+      <p>A human intern who overbuilds can be glared at. An agent overbuilds <strong>fluently</strong> and <strong>quickly</strong>, then writes docs that justify the extra work. Without a spec, review is you arguing with a very fast junior.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Definition</p>
+      <h2>Pin the pattern to a document you control</h2>
+      <p class="callout">If it is not in the spec, Claude must not build it. If it is in the spec, tests must prove it.</p>
+      <p>This lecture is not enterprise theater. It is the smallest set of documents and habits that let an agent loop <strong>close against a written contract</strong>. You already have the machinery: the loop (L1), project memory (L2), modes and MCP (L3), context (L4). SDD is how you point that machinery at <strong>one</strong> source of truth.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Contract</p>
+      <h2>Five rules, not a ceremony</h2>
+      <ol>
+        <li>Work starts with a <strong>written spec</strong> — markdown in the repo, or a Jira story that <em>is</em> the spec.</li>
+        <li>The spec lists <strong>behavior</strong>, <strong>acceptance</strong>, <strong>out of scope</strong>, and <strong>checks</strong>.</li>
+        <li>Implementation may not add product behavior that is not in the spec.</li>
+        <li>Tests are traced to acceptance criteria.</li>
+        <li>If reality disagrees, you <strong>change the spec first</strong> (or explicitly waive), then the code.</li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Lanes</p>
+      <h2>Each document has one job</h2>
+      <p>If everything lives in Jira, versions disappear into screenshots. If everything lives in <code>CLAUDE.md</code>, every rename pays for the feature.</p>
+      <table>
+        <thead><tr><th>Doc</th><th>Job</th><th>When it loads</th></tr></thead>
+        <tbody>
+          <tr><td><code>product.md</code></td><td>Why it exists</td><td>Rarely — keep short or path-only</td></tr>
+          <tr><td><code>architecture.md</code></td><td>How we build</td><td>Short import, or when structure changes</td></tr>
+          <tr><td><code>docs/specs/SPEC-xxx.md</code></td><td>This feature’s contract</td><td><strong>This task only</strong> — <code>@</code> in the prompt</td></tr>
+          <tr><td>Jira</td><td>Queue, status, link to the file</td><td>MCP when configured</td></tr>
+          <tr><td><code>CLAUDE.md</code></td><td>Honor specs; run tests</td><td>Every session</td></tr>
+          <tr><td>Skill</td><td>The SDD checklist</td><td>On demand</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Canonical</p>
+      <h2>Git holds the contract. Jira holds the ticket.</h2>
+      <p>Jira is excellent as a queue: priorities, assignees, status. Jira is a poor unique home for a 3-page spec. Two copies will drift.</p>
+      <pre><code>Canonical spec: docs/specs/SPEC-001-ticket-assignee.md</code></pre>
+      <p class="diagram-caption">MCP should open the file, not improvise from a one-liner in the description. If the ticket is a stub, write the SPEC in git first, then comment the path.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Spec anatomy</p>
+      <h2>Stable headings a skill can fill</h2>
+      <p>A spec is not a novel. Use the same sections every time so <code>/implement-spec</code> can say “fill these.”</p>
+      <table>
+        <thead><tr><th>Section</th><th>What belongs</th></tr></thead>
+        <tbody>
+          <tr><td>Header</td><td>ID, title, status, optional Jira key</td></tr>
+          <tr><td>Problem</td><td>User pain — not the solution</td></tr>
+          <tr><td>Scope / <strong>Out of scope</strong></td><td>What will change, and the attractive extras you refuse</td></tr>
+          <tr><td>Requirements (R1…)</td><td>Numbered, testable. Not “we should support ownership.”</td></tr>
+          <tr><td>API / UX contract</td><td>Shapes, status codes, error bodies</td></tr>
+          <tr><td>Acceptance → tests</td><td>Given / When / Then, or a table</td></tr>
+          <tr><td>Checks</td><td><code>pytest</code>, <code>ruff check .</code></td></tr>
+          <tr><td>Open questions</td><td>If not empty, the agent must <strong>stop</strong></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Out of scope</p>
+      <h2>The most important section for agents</h2>
+      <p>List the extras that usually follow the pattern on the internet. If you do not write them down, the model will treat them as implied.</p>
+      <div class="columns">
+        <div class="card">
+          <h3>For “add assignee”</h3>
+          <p>No user directory. No validation that the person exists. No email. No UI. No permissions model.</p>
+        </div>
+        <div class="card">
+          <h3>Why it works</h3>
+          <p>Review becomes mechanical: every extra endpoint is a spec miss, not a taste argument. The agent can be told “nothing from Out of scope” and have a file to obey.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Good vs bad</p>
+      <h2>Implementable versus “like other tools”</h2>
+      <div class="columns">
+        <div class="card">
+          <h3>Bad</h3>
+          <p>“Add assignees like other tools.” The model will invent a User, a foreign key, and a notification.</p>
+        </div>
+        <div class="card">
+          <h3>Good</h3>
+          <p>R1 optional <code>string | null</code>. R4 omit on PATCH leaves the value unchanged. Clearing uses <code>null</code>. No user directory.</p>
+        </div>
+      </div>
+      <pre><code>## Acceptance
+- Given a new ticket without assignee, GET shows null.
+- PATCH {"assignee":"it-oncall"} then GET shows that value.
+- PATCH {"assignee":null} then GET shows null.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">The loop</p>
+      <h2>Explore → spec → plan → implement → verify → docs → ticket</h2>
+      <p>Skip plan and you get surprise files. Skip docs and the next agent will pick at random between code and yesterday’s architecture note.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><span class="flow-num">1</span><h3>Explore</h3><p>Plan mode. Read product, architecture, current fields. No code.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">2</span><h3>Spec</h3><p>Write or tighten <code>SPEC-xxx.md</code>. Empty open questions, or stop.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">3</span><h3>Plan</h3><p>Files and tests mapped to acceptance. Nothing from Out of scope.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><span class="flow-num">4</span><h3>Build</h3><p>Implement, quiet checks, update docs, comment the ticket. You own Done.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Plan mode until signed</p>
+      <h2>Do not implement a draft</h2>
+      <p>Attach the spec once. Ask for a plan you can reject. Cheaper than rewinding a tree of extra models.</p>
+      <pre><code>@docs/specs/SPEC-001-ticket-assignee.md
+Write a plan: files, tests mapped to
+acceptance criteria. Nothing from Out of scope.</code></pre>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Then implement</p>
+      <h2>Only that spec. Evidence, not “done.”</h2>
+      <pre><code>Implement SPEC-001 only.
+Map each acceptance line to a pytest.
+pytest -q and ruff until green.
+If ambiguous, stop. Do not guess.</code></pre>
+      <p class="diagram-caption">If reality disagrees with the spec, change the spec first. Do not silently “fix” the document to match accidental code.</p>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Tests</p>
+      <h2>The spec in executable form</h2>
+      <p>With a spec, review is mechanical: every criterion has a test or a reason it is manual; no extra endpoints; docs match the spec, not the agent’s blog post.</p>
+      <ul>
+        <li>Name tests after the spec id (<code>test_spec001_assignee_defaults_null</code>).</li>
+        <li>Do not rewrite tests to match accidental behavior.</li>
+        <li>Optional TDD: failing tests first, then code until green. Agents are good at this when you forbid extra fixtures.</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Skill</p>
+      <h2>/implement-spec</h2>
+      <p><code>CLAUDE.md</code> only needs about ten lines of policy: honor specs, run tests, do not invent scope. The ritual lives in the skill so you do not pay for it on every rename.</p>
+      <div class="diagram">
+        <div class="flow-row">
+          <div class="flow-node"><h3>Restate</h3><p>Scope and out of scope, in the agent’s words.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>Stop</h3><p>If open questions are not empty.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>Plan · build</h3><p>In-scope only. Quiet checks.</p></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node"><h3>Report</h3><p>Docs updated. What you refused.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">MCP</p>
+      <h2>Transport, not a second spec</h2>
+      <ol>
+        <li>Read the issue. If it is a stub, write the SPEC in git and comment the path.</li>
+        <li>Implement from the <strong>file</strong>, not from a one-line summary the model invented.</li>
+        <li>Comment a short summary of what shipped and what you refused.</li>
+        <li>You own status. Do not let “helpfulness” move the ticket to Done.</li>
+      </ol>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Docs</p>
+      <h2>Update architecture in the same change</h2>
+      <p>When docs and code disagree, the next agent will pick at random. Keep docs short so they can be found without eating the window.</p>
+      <ul>
+        <li>New field on Ticket → one paragraph in <code>architecture.md</code>, not a new chapter.</li>
+        <li>Do not paste the whole spec into <code>CLAUDE.md</code>.</li>
+        <li>Product copy that did not change does not need a rewrite “for completeness.”</li>
+      </ul>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Failures you will see</p>
+      <h2>Name them so you can catch them</h2>
+      <table>
+        <thead><tr><th>What happens</th><th>What you do</th></tr></thead>
+        <tbody>
+          <tr><td>Vague spec → invented User model</td><td>Tighten Out of scope; rewind the extras</td></tr>
+          <tr><td>Huge spec → forgotten middle criteria</td><td>Smaller SPEC, or <code>@</code> it again after compact</td></tr>
+          <tr><td>Jira says X, file says Y</td><td>Git wins; fix the ticket link</td></tr>
+          <tr><td>Green tests, unmet spec</td><td>Tests were rewritten to match the code — reject</td></tr>
+          <tr><td>Plan skipped → surprise files</td><td>Plan mode until signed</td></tr>
+          <tr><td>Ticket moved to Done by “helpfulness”</td><td>You own transitions; say so in the prompt</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Stack</p>
+      <h2>SDD uses the whole course</h2>
+      <div class="diagram layer-stack">
+        <div class="layer">
+          <span class="layer-label">L1</span>
+          <div><h3>Verify is the Checks section</h3><p>pytest and ruff are how the loop closes. “Done” without output is not done.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L2</span>
+          <div><h3>Skill ritual, hooks enforce</h3><p><code>/implement-spec</code> waits until needed. A Stop hook can refuse a red suite.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L3</span>
+          <div><h3>Plan mode; MCP is the queue</h3><p>No source edits until the plan matches the spec. Jira is transport.</p></div>
+        </div>
+        <div class="layer">
+          <span class="layer-label">L4</span>
+          <div><h3>Clean session, @ the spec once</h3><p>Do not import the wiki. Side quests get another window.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide packed">
+      <p class="kicker">Close</p>
+      <h2>One story end to end — then optional extras</h2>
+      <p>Next you will read and create a Jira story through MCP, then take one story from spec to green tests and honest docs.</p>
+      <p>After the course, optional work: specify an in-app chatbot and an in-app agent <em>before</em> you build them. Same rule: if it is not in the spec, do not ship it.</p>
+    </section>
+
+  </div>
+  <div class="footer"><span>Arrow keys · Space · click · Esc overview · d dark</span><span data-counter></span></div>
+  <script src="shared/course.js"></script>
+</body>
+</html>
