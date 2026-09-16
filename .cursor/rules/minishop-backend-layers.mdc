@@ -1,0 +1,45 @@
+---
+description: MiniShop backend layer architecture (endpoints, workflows, repositories)
+globs: demo-project/backend/**
+alwaysApply: false
+---
+
+# MiniShop backend layers
+
+Apply when editing `demo-project/backend/`.
+
+## Flow
+
+```
+HTTP request → endpoints/ → workflows/ → repositories/ → models/
+```
+
+| Layer | Owns | Must not |
+| --- | --- | --- |
+| `endpoints/` | Routes, Pydantic I/O, HTTP status, map domain errors | SQL, business rules, transactions |
+| `workflows/` | One class per API **operation**; validation, orchestration, commit/rollback | Raw queries (use repositories) |
+| `repositories/` | One **class** per entity; `select`, `get`, locks, `add`, `flush` | FastAPI, Pydantic requests, HTTP |
+
+## File layout
+
+- `models/<entity>.py` — SQLAlchemy; re-export from `models/__init__.py` for Alembic (`alembic/env.py` imports from `app.models`).
+- `schemas/<entity>.py` — Pydantic HTTP contract.
+- `repositories/<entity>_repository.py` — e.g. `ProductRepository`.
+- `workflows/<operation>.py` — e.g. `CreateOrderWorkflow` in `create_order.py`.
+- `exceptions/` — domain errors; endpoints translate to 4xx/5xx.
+- `dependencies.py` — `Depends()` factories that build workflows with `Session`.
+
+## Naming
+
+- Repository: `{Entity}Repository`
+- Workflow: `{VerbNoun}Workflow` (e.g. `ListProductsWorkflow`)
+- New operation = new workflow file, not a new method on a generic “service” god class
+
+## Adding an operation
+
+1. Repository methods if new persistence is needed.
+2. Workflow class with `execute(...)`.
+3. Dependency factory in `dependencies.py`.
+4. Endpoint handler that catches domain exceptions and raises `HTTPException`.
+
+Do not add monolithic `crud.py` or put SQL in endpoints.

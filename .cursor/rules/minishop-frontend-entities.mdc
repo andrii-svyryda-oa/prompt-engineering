@@ -1,0 +1,43 @@
+---
+description: MiniShop frontend entity-module layout (RTK Query, types, pages)
+globs: demo-project/frontend/**
+alwaysApply: false
+---
+
+# MiniShop frontend entities
+
+Apply when editing `demo-project/frontend/src/`.
+
+## Structure
+
+```
+entities/<name>/
+  types.ts       API/client types for this entity
+  api.ts         RTK Query endpoints (if server-backed)
+  cartSlice.ts   Redux slice (client-only entities like cart)
+  components/    Entity-specific UI
+  pages/         Route pages for this entity
+shared/
+  Layout.tsx
+  components/ui/ shadcn primitives
+app/
+  api.ts         RTK Query base slice only
+  store.ts       Register reducers + side-effect import entity api.ts
+```
+
+## Rules
+
+- One **entity folder** per domain concept (`product`, `order`, `cart`).
+- HTTP calls only via RTK Query in entity `api.ts` (built on `app/api.ts`). No raw `fetch` elsewhere.
+- Types for an entity stay in that entity’s `types.ts`, not a global `types/` barrel.
+- Cross-entity pages (e.g. checkout) live under the primary entity (`order/pages/`) and import other entities as needed.
+- Shared layout and design system live under `shared/`, not under `entities/`.
+
+## Adding a screen or entity
+
+1. `entities/<entity>/types.ts`
+2. `entities/<entity>/api.ts` + `import '@/entities/<entity>/api'` in `store.ts`
+3. Pages/components under the same entity folder
+4. Route in `App.tsx`
+
+See `demo-project/docs/architecture.md` for the full checklist (backend + frontend).
